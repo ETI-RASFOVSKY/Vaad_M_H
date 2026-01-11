@@ -58,7 +58,7 @@ export default function DashboardHome() {
           className="bg-white p-6 rounded-lg shadow-md"
         >
           <h3 className="text-lg font-semibold text-gray-700 mb-2">הודעות</h3>
-          <p className="text-3xl font-bold text-gold-DEFAULT">{stats.messages}</p>
+          <p className="text-3xl font-bold text-gold">{stats.messages}</p>
           <p className="text-sm text-gray-500 mt-2">
             {stats.unreadMessages} לא נקראו
           </p>
@@ -71,7 +71,7 @@ export default function DashboardHome() {
           className="bg-white p-6 rounded-lg shadow-md"
         >
           <h3 className="text-lg font-semibold text-gray-700 mb-2">מדיה</h3>
-          <p className="text-3xl font-bold text-gold-DEFAULT">{stats.media}</p>
+          <p className="text-3xl font-bold text-gold">{stats.media}</p>
           <p className="text-sm text-gray-500 mt-2">
             {stats.images} תמונות, {stats.videos} סרטונים
           </p>

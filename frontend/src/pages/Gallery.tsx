@@ -101,7 +101,7 @@ export default function Gallery() {
               onClick={() => setSelectedCategory(category.value)}
               className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
                 selectedCategory === category.value
-                  ? 'bg-gold-DEFAULT text-white'
+                  ? 'bg-gold text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >

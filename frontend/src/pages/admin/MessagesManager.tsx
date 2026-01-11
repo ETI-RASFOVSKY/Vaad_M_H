@@ -62,7 +62,7 @@ export default function MessagesManager() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
               filter === 'all'
-                ? 'bg-gold-DEFAULT text-white'
+                ? 'bg-gold text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -72,7 +72,7 @@ export default function MessagesManager() {
             onClick={() => setFilter('unread')}
             className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
               filter === 'unread'
-                ? 'bg-gold-DEFAULT text-white'
+                ? 'bg-gold text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -82,7 +82,7 @@ export default function MessagesManager() {
             onClick={() => setFilter('read')}
             className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
               filter === 'read'
-                ? 'bg-gold-DEFAULT text-white'
+                ? 'bg-gold text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -98,7 +98,7 @@ export default function MessagesManager() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className={`bg-white p-6 rounded-lg shadow-md ${
-              !message.handled ? 'border-r-4 border-gold-DEFAULT' : ''
+              !message.handled ? 'border-r-4 border-gold' : ''
             }`}
           >
             <div className="flex justify-between items-start mb-4">
@@ -119,7 +119,7 @@ export default function MessagesManager() {
                   })}
                 </p>
                 {!message.handled && (
-                  <span className="inline-block bg-gold-DEFAULT text-white px-3 py-1 rounded-full text-sm font-semibold">
+                  <span className="inline-block bg-gold text-white px-3 py-1 rounded-full text-sm font-semibold">
                     חדש
                   </span>
                 )}

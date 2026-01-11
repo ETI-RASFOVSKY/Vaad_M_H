@@ -86,7 +86,7 @@ export default function Contact() {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                   errors.name
                     ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-gold-DEFAULT'
+                    : 'border-gray-300 focus:ring-gold'
                 }`}
                 placeholder="הכנס שם מלא"
               />
@@ -107,7 +107,7 @@ export default function Contact() {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                   errors.email
                     ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-gold-DEFAULT'
+                    : 'border-gray-300 focus:ring-gold'
                 }`}
                 placeholder="your.email@example.com"
               />
@@ -128,7 +128,7 @@ export default function Contact() {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 resize-none ${
                   errors.content
                     ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-gold-DEFAULT'
+                    : 'border-gray-300 focus:ring-gold'
                 }`}
                 placeholder="כתבו כאן את הודעתכם..."
               />

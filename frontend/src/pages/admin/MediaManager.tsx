@@ -122,7 +122,7 @@ export default function MediaManager() {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-DEFAULT"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold"
               >
                 <option value="">בחר קטגוריה</option>
                 <option value="hanukkah">חנוכה</option>
@@ -139,7 +139,7 @@ export default function MediaManager() {
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-DEFAULT"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold"
                 placeholder="כותרת לתמונה/סרטון"
               />
             </div>
@@ -151,7 +151,7 @@ export default function MediaManager() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-DEFAULT resize-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold resize-none"
                 placeholder="תיאור קצר"
               />
             </div>
@@ -165,7 +165,7 @@ export default function MediaManager() {
                 accept="image/*,video/*"
                 onChange={handleFileSelect}
                 disabled={uploading}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-DEFAULT"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold"
               />
             </div>
             {uploading && (

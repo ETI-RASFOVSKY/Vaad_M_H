@@ -30,7 +30,7 @@ export default function Home() {
               קרא עוד
             </Link>
             <a
-              href="https://nedarim-plus.co.il"
+              href="https://www.matara.pro/nedarimplus/online/?mosad=7004497"
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary"

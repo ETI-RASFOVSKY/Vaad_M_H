@@ -34,8 +34,8 @@ export default function Header() {
                 to={item.path}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   isActive(item.path)
-                    ? 'text-gold-DEFAULT font-semibold'
-                    : 'text-gray-700 hover:text-gold-DEFAULT'
+                    ? 'text-gold font-semibold'
+                    : 'text-gray-700 hover:text-gold'
                 }`}
               >
                 {item.label}
@@ -91,7 +91,7 @@ export default function Header() {
                     onClick={() => setIsMenuOpen(false)}
                     className={`block px-4 py-2 rounded-lg ${
                       isActive(item.path)
-                        ? 'text-gold-DEFAULT font-semibold bg-gold-50'
+                        ? 'text-gold font-semibold bg-gold-50'
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >

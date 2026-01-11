@@ -80,14 +80,14 @@ export default function About() {
             <h2 className="text-3xl font-bold mb-6 text-gray-900">אירועים מיוחדים</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-semibold mb-3 text-gold-DEFAULT">חנוכה ול"ג בעומר</h3>
+                <h3 className="text-xl font-semibold mb-3 text-gold">חנוכה ול"ג בעומר</h3>
                 <p className="text-gray-700">
                   פעמיים בשנה מקיים הארגון אירועים מיוחדים (חנוכה ול"ג בעומר) לאירועים אלו מוזמנים הבחורים מכלל הועדים
                   וכן בוגרי וידידי הועד, אירועים אלו תורמים לחיבור נוסף של הבחורים עם הועד ורצון להיות שייך.
                 </p>
               </div>
               <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-semibold mb-3 text-gold-DEFAULT">שבתות גיבוש</h3>
+                <h3 className="text-xl font-semibold mb-3 text-gold">שבתות גיבוש</h3>
                 <p className="text-gray-700">
                   מידי שנה הארגון מקיים שבת גיבוש לכלל בני הועדים המתקיימים בשבתות חופשה שבישיבות,
                   תוך משימה משותפת של סיומי מסכת הנערכים ב"ועדים" במשך השנה,

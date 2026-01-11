@@ -38,7 +38,7 @@ export default function Donate() {
               אנו מודים לכם על שותפותכם ועל האמון שנתתם בנו.
             </p>
             <motion.a
-              href="https://nedarim-plus.co.il"
+              href="https://www.matara.pro/nedarimplus/online/?mosad=7004497"
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
@@ -60,19 +60,19 @@ export default function Donate() {
             <h3 className="text-2xl font-bold mb-4 text-gray-900">למה חשוב לתמוך?</h3>
             <ul className="text-gray-700 space-y-3 text-right">
               <li className="flex items-start">
-                <span className="ml-3 text-gold-DEFAULT">✓</span>
+                <span className="ml-3 text-gold">✓</span>
                 <span>תמיכה בהמשך קיום הועדים השבועיים בערים השונות</span>
               </li>
               <li className="flex items-start">
-                <span className="ml-3 text-gold-DEFAULT">✓</span>
+                <span className="ml-3 text-gold">✓</span>
                 <span>אפשרות להעניק מענה אישי לבחורים הזקוקים לכך</span>
               </li>
               <li className="flex items-start">
-                <span className="ml-3 text-gold-DEFAULT">✓</span>
+                <span className="ml-3 text-gold">✓</span>
                 <span>קיום אירועים מיוחדים ושבתות גיבוש</span>
               </li>
               <li className="flex items-start">
-                <span className="ml-3 text-gold-DEFAULT">✓</span>
+                <span className="ml-3 text-gold">✓</span>
                 <span>הרחבת הפעילות לערים נוספות</span>
               </li>
             </ul>

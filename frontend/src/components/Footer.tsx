@@ -19,22 +19,22 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">קישורים מהירים</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/about" className="text-gray-400 hover:text-gold-DEFAULT transition-colors">
+                <Link to="/about" className="text-gray-400 hover:text-gold transition-colors">
                   אודותינו
                 </Link>
               </li>
               <li>
-                <Link to="/gallery" className="text-gray-400 hover:text-gold-DEFAULT transition-colors">
+                <Link to="/gallery" className="text-gray-400 hover:text-gold transition-colors">
                   גלריה
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-gray-400 hover:text-gold-DEFAULT transition-colors">
+                <Link to="/contact" className="text-gray-400 hover:text-gold transition-colors">
                   צור קשר
                 </Link>
               </li>
               <li>
-                <Link to="/donate" className="text-gray-400 hover:text-gold-DEFAULT transition-colors">
+                <Link to="/donate" className="text-gray-400 hover:text-gold transition-colors">
                   תרומה
                 </Link>
               </li>

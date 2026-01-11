@@ -55,7 +55,7 @@ export default function VideoHero() {
             מענה אמיתי ומתמשך לבחורים במצבים רבים ושונים
           </p>
           <motion.a
-            href="https://nedarim-plus.co.il"
+            href="https://www.matara.pro/nedarimplus/online/?mosad=7004497"
             target="_blank"
             rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}

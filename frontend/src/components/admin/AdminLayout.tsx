@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex items-center space-x-4 space-x-reverse">
               <Link
                 to="/"
-                className="text-gray-700 hover:text-gold-DEFAULT transition-colors"
+                className="text-gray-700 hover:text-gold transition-colors"
               >
                 חזרה לאתר
               </Link>
@@ -45,19 +45,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex space-x-8 space-x-reverse">
             <Link
               to="/admin"
-              className="px-4 py-4 border-b-2 border-transparent hover:border-gold-DEFAULT transition-colors"
+              className="px-4 py-4 border-b-2 border-transparent hover:border-gold transition-colors"
             >
               לוח בקרה
             </Link>
             <Link
               to="/admin/messages"
-              className="px-4 py-4 border-b-2 border-transparent hover:border-gold-DEFAULT transition-colors"
+              className="px-4 py-4 border-b-2 border-transparent hover:border-gold transition-colors"
             >
               הודעות
             </Link>
             <Link
               to="/admin/media"
-              className="px-4 py-4 border-b-2 border-transparent hover:border-gold-DEFAULT transition-colors"
+              className="px-4 py-4 border-b-2 border-transparent hover:border-gold transition-colors"
             >
               גלריה
             </Link>

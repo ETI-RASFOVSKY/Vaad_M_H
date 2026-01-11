@@ -66,7 +66,7 @@ export default function Statistics() {
             transition={{ duration: 0.5, delay: index * 0.1 }}
             className="text-center p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
           >
-            <div className="text-5xl md:text-6xl font-bold text-gold-DEFAULT mb-2">
+            <div className="text-5xl md:text-6xl font-bold text-gold mb-2">
               <Counter end={stat.value} suffix={stat.suffix} />
             </div>
             <div className="text-lg md:text-xl text-gray-700 font-semibold">
