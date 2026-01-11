@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import logo from '/logo.svg'
+import logo from '/logo.jpg'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth()

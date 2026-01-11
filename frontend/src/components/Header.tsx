@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import logo from '/logo.svg'
+import logo from '/logo.jpg'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
