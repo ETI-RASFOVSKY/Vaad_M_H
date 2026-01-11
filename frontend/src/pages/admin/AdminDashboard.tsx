@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../components/admin/AdminLayout'
 import MediaManager from './MediaManager'
