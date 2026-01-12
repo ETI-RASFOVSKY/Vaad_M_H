@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import axios from 'axios'
 
+ axios.defaults.baseURL = 'https://vaad-backend-i96q.onrender.com';
+
+
 interface User {
   id: string
   email: string
@@ -55,7 +58,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const login = async (email: string, password: string) => {
-const response = await axios.post('https://vaad-backend-i96q.onrender.com/api/auth/login', { email, password })
+    // const response = await axios.post('/api/auth/login', { email, password })
+const response = await axios.post('/api/auth/login', { email, password })
     if (response.data.success) {
       const { token: newToken, user: newUser } = response.data
       setToken(newToken)
