@@ -1,8 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import axios from 'axios'
-
- axios.defaults.baseURL = 'https://vaad-backend-i96q.onrender.com';
-
+import client from '../api/client'
 
 interface User {
   id: string
@@ -42,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const verifyToken = async (tokenToVerify: string) => {
     try {
-      const response = await axios.get('/api/auth/verify', {
+      const response = await client.get('/api/auth/verify', {
         headers: { Authorization: `Bearer ${tokenToVerify}` },
       })
       if (response.data.success) {
@@ -58,8 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const login = async (email: string, password: string) => {
-    // const response = await axios.post('/api/auth/login', { email, password })
-const response = await axios.post('/api/auth/login', { email, password })
+    const response = await client.post('/api/auth/login', { email, password })
     if (response.data.success) {
       const { token: newToken, user: newUser } = response.data
       setToken(newToken)
