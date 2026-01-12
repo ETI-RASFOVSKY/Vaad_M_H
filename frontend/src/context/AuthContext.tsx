@@ -48,21 +48,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('token')
         setToken(null)
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Silently fail verification - user just needs to login again
+      console.debug('Token verification failed:', error.message)
       localStorage.removeItem('token')
       setToken(null)
     }
   }
 
   const login = async (email: string, password: string) => {
-    const response = await client.post('/api/auth/login', { email, password })
-    if (response.data.success) {
-      const { token: newToken, user: newUser } = response.data
-      setToken(newToken)
-      setUser(newUser)
-      localStorage.setItem('token', newToken)
-    } else {
-      throw new Error('Login failed')
+    try {
+      const response = await client.post('/api/auth/login', { email, password })
+      if (response.data.success) {
+        const { token: newToken, user: newUser } = response.data
+        setToken(newToken)
+        setUser(newUser)
+        localStorage.setItem('token', newToken)
+      } else {
+        throw new Error('Login failed')
+      }
+    } catch (error: any) {
+      console.error('Login error:', error)
+      if (error.response) {
+        // Server responded with error
+        if (error.response.status === 401) {
+          throw new Error('אימייל או סיסמה שגויים')
+        } else if (error.response.status === 404) {
+          throw new Error('שרת לא נמצא. אנא בדקו את חיבור ה-API.')
+        } else {
+          throw new Error(error.response.data?.error || 'שגיאה בהתחברות')
+        }
+      } else if (error.request) {
+        // Network error
+        throw new Error('לא ניתן להתחבר לשרת. אנא בדקו את החיבור.')
+      } else {
+        throw new Error(error.message || 'שגיאה בהתחברות')
+      }
     }
   }
 
