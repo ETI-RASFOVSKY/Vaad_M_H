@@ -1,11 +1,37 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// Get API URL - try multiple sources for flexibility
+const getApiUrl = () => {
+  // 1. Try Vite env var (available at build time)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // 2. Try window location for runtime (if deployed on same domain with proxy)
+  if (typeof window !== 'undefined') {
+    // For production, if backend is on Render but env var wasn't set during build
+    // We can try to construct it from current domain or use a fallback
+    const hostname = window.location.hostname
+    
+    // If on render.com domain, try to construct backend URL
+    if (hostname.includes('render.com') && hostname.includes('frontend')) {
+      // Extract project name from frontend URL and construct backend URL
+      // This is a fallback - should use VITE_API_URL in production
+      return 'https://vaad-backend-i96q.onrender.com'
+    }
+  }
+  
+  // 3. Default fallback
+  return 'http://localhost:5000'
+}
+
+const API_URL = getApiUrl()
 
 // Debug: log the API URL (will be removed in production)
 if (typeof window !== 'undefined') {
   console.log('API_URL:', API_URL)
   console.log('VITE_API_URL env:', import.meta.env.VITE_API_URL)
+  console.log('Window location:', window.location.hostname)
 }
 
 const client = axios.create({
