@@ -125,6 +125,7 @@ export default function MediaManager() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold"
               >
                 <option value="">בחר קטגוריה</option>
+                <option value="video">וידיאו</option>
                 <option value="hanukkah">חנוכה</option>
                 <option value="lag-baomer">ל"ג בעומר</option>
                 <option value="shabbat">שבת גיבוש</option>

@@ -78,6 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           throw new Error(error.response.data?.error || 'שגיאה בהתחברות')
         }
+      } else if (error.response?.status === 403) {
+        throw new Error('האימייל לא אומת. אנא אמתו את האימייל שלכם תחילה.')
       } else if (error.request) {
         // Network error
         throw new Error('לא ניתן להתחבר לשרת. אנא בדקו את החיבור.')

@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
+import { sendContactEmailToAdmin, sendContactConfirmationToUser } from '../services/email.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -30,6 +31,14 @@ router.post(
           content,
         },
       });
+
+      // Send emails (don't wait for them to complete)
+      sendContactEmailToAdmin({ name, email, content }).catch(err => 
+        console.error('Failed to send email to admin:', err)
+      );
+      sendContactConfirmationToUser(email, name).catch(err => 
+        console.error('Failed to send confirmation email to user:', err)
+      );
 
       res.status(201).json({
         success: true,
