@@ -43,7 +43,8 @@ router.post(
       if (!user.emailVerified) {
         return res.status(403).json({ 
           success: false, 
-          error: 'Email not verified. Please verify your email first.' 
+          error: 'האימייל לא אומת. אנא אמתו את האימייל שלכם תחילה דרך דף ההרשמה.',
+          requiresVerification: true
         });
       }
 
@@ -396,11 +397,22 @@ router.post(
         },
       });
 
-      await sendPasswordResetEmail(email, resetCode);
+      const emailSent = await sendPasswordResetEmail(email, resetCode);
+      
+      if (!emailSent) {
+        console.warn(`⚠️  Password reset code for ${email}: ${resetCode}`);
+        console.warn('⚠️  Email was not sent. Check email configuration or verify domain in Resend.');
+        console.warn('⚠️  For Resend: You need to verify a domain or use your account email address.');
+      }
 
       res.json({
         success: true,
         message: 'If the email exists, a reset code has been sent',
+        // In development, return code if email failed (for testing)
+        ...(process.env.NODE_ENV === 'development' && !emailSent && { 
+          debugCode: resetCode,
+          debugMessage: 'Email not sent - Resend requires verified domain. Code: ' + resetCode
+        }),
       });
     } catch (error) {
       next(error);
@@ -413,7 +425,7 @@ router.post(
   '/reset-password',
   [
     body('email').isEmail().normalizeEmail(),
-    body('code').isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits'),
+    body('code').isString().trim().notEmpty().withMessage('Code is required'),
     body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   ],
   async (req, res, next) => {
@@ -424,6 +436,9 @@ router.post(
       }
 
       const { email, code, newPassword } = req.body;
+      
+      // Normalize code - remove spaces and convert to string
+      const normalizedCode = String(code).trim().replace(/\s/g, '');
 
       const user = await prisma.user.findUnique({
         where: { email },
@@ -433,12 +448,16 @@ router.post(
         return res.status(404).json({ success: false, error: 'User not found' });
       }
 
-      if (user.resetPasswordCode !== code) {
-        return res.status(400).json({ success: false, error: 'Invalid reset code' });
+      if (!user.resetPasswordCode) {
+        return res.status(400).json({ success: false, error: 'No reset code found. Please request a new one.' });
+      }
+
+      if (user.resetPasswordCode !== normalizedCode) {
+        return res.status(400).json({ success: false, error: 'קוד איפוס שגוי. אנא בדקו את הקוד שקיבלתם במייל.' });
       }
 
       if (!user.resetPasswordCodeExpires || user.resetPasswordCodeExpires < new Date()) {
-        return res.status(400).json({ success: false, error: 'Reset code expired' });
+        return res.status(400).json({ success: false, error: 'קוד איפוס פג תוקף. אנא בקשו קוד חדש.' });
       }
 
       // Hash new password

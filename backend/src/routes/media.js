@@ -105,6 +105,20 @@ router.get('/', async (req, res, next) => {
       data: media,
     });
   } catch (error) {
+    console.error('Error fetching media:', error);
+    // Provide more helpful error messages
+    if (error.code === 'P1001') {
+      return res.status(500).json({
+        success: false,
+        error: 'Database connection error. Please check your DATABASE_URL in .env file.',
+      });
+    }
+    if (error.code === 'P2025' || error.message?.includes('does not exist')) {
+      return res.status(500).json({
+        success: false,
+        error: 'Database tables not found. Please run: npx prisma migrate dev',
+      });
+    }
     next(error);
   }
 });

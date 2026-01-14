@@ -56,13 +56,38 @@ export const sendContactEmailToAdmin = async (messageData) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      await resend.emails.send({
-        from: fromEmail,
-        to: adminEmail,
-        subject: `הודעה חדשה מאתר - ${messageData.name}`,
-        html: htmlContent,
-      });
-      return true;
+      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      
+      try {
+        const result = await resend.emails.send({
+          from: fromEmail,
+          to: adminEmail,
+          subject: `הודעה חדשה מאתר - ${messageData.name}`,
+          html: htmlContent,
+        });
+        
+        // If error about verified domain, send to account email
+        if (result.error && (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain'))) {
+          console.log(`⚠️  Cannot send to ${adminEmail}. Sending to account email ${accountEmail} instead...`);
+          await resend.emails.send({
+            from: fromEmail,
+            to: accountEmail,
+            subject: `הודעה חדשה מאתר - ${messageData.name}`,
+            html: htmlContent,
+          });
+          console.log(`✅ Contact email sent to account email: ${accountEmail}`);
+          return true;
+        }
+        
+        if (result.error) {
+          throw new Error(result.error.message || 'Resend API error');
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error sending email to admin:', error);
+        return false;
+      }
     }
 
     // Fallback to nodemailer
@@ -105,13 +130,32 @@ export const sendContactConfirmationToUser = async (userEmail, userName) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      await resend.emails.send({
-        from: fromEmail,
-        to: userEmail,
-        subject: 'תודה על פנייתך - ועד מבקשי ה\'',
-        html: htmlContent,
-      });
-      return true;
+      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      
+      try {
+        const result = await resend.emails.send({
+          from: fromEmail,
+          to: userEmail,
+          subject: 'תודה על פנייתך - ועד מבקשי ה\'',
+          html: htmlContent,
+        });
+        
+        // If error about verified domain, send to account email (but log that it's for the user)
+        if (result.error && (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain'))) {
+          console.log(`⚠️  Cannot send confirmation to ${userEmail}. Email would be sent to account email ${accountEmail} if needed.`);
+          // For confirmation emails, we'll just skip if we can't send to the user
+          return false;
+        }
+        
+        if (result.error) {
+          throw new Error(result.error.message || 'Resend API error');
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error sending confirmation email to user:', error);
+        return false;
+      }
     }
 
     // Fallback to nodemailer
@@ -160,13 +204,47 @@ export const sendVerificationEmail = async (email, code) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      await resend.emails.send({
-        from: fromEmail,
-        to: email,
-        subject: 'קוד אימות - ועד מבקשי ה\'',
-        html: htmlContent,
-      });
-      return true;
+      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      
+      try {
+        const result = await resend.emails.send({
+          from: fromEmail,
+          to: email,
+          subject: 'קוד אימות - ועד מבקשי ה\'',
+          html: htmlContent,
+        });
+        
+        // If error about verified domain, send to account email
+        if (result.error && (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain'))) {
+          console.log(`⚠️  Cannot send to ${email}. Sending to account email ${accountEmail} instead...`);
+          
+          const htmlWithInfo = htmlContent.replace(
+            '<h2 style="color: #333;">קוד אימות</h2>',
+            `<h2 style="color: #333;">קוד אימות</h2>
+            <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+              <strong>מייל מקורי:</strong> ${email}
+            </p>`
+          );
+          
+          await resend.emails.send({
+            from: fromEmail,
+            to: accountEmail,
+            subject: `קוד אימות - ${email}`,
+            html: htmlWithInfo,
+          });
+          console.log(`✅ Verification code sent to account email: ${accountEmail}`);
+          return true;
+        }
+        
+        if (result.error) {
+          throw new Error(result.error.message || 'Resend API error');
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error sending verification email:', error);
+        return false;
+      }
     }
 
     // Fallback to nodemailer
@@ -191,12 +269,16 @@ export const sendVerificationEmail = async (email, code) => {
 // Send password reset code email
 export const sendPasswordResetEmail = async (email, code) => {
   if (!isEmailEnabled()) {
-    console.log('Email not configured - reset code:', code);
+    console.log('⚠️  Email not configured - reset code:', code);
     console.log('⚠️  WARNING: Email reset is not configured. Code is:', code);
+    console.log('⚠️  Please check your RESEND_API_KEY or EMAIL_USER/EMAIL_PASSWORD in .env');
     return false;
   }
 
   try {
+    // For Resend, we need to use the account email or verified domain
+    // Try account email first, then fallback to configured EMAIL_FROM
+    const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'e0548451274@gmail.com';
     
     const htmlContent = `
@@ -215,30 +297,95 @@ export const sendPasswordResetEmail = async (email, code) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      await resend.emails.send({
-        from: fromEmail,
-        to: email,
-        subject: 'איפוס סיסמה - ועד מבקשי ה\'',
-        html: htmlContent,
-      });
-      return true;
+      // Resend allows sending to account email without domain verification
+      // Use ADMIN_EMAIL or RESEND_ACCOUNT_EMAIL as fallback recipient
+      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      const targetEmail = email;
+      
+      console.log(`📧 Sending password reset email to ${targetEmail} via Resend...`);
+      console.log(`📧 From: ${resendFromEmail}`);
+      
+      try {
+        // Try sending to the requested email first
+        const result = await resend.emails.send({
+          from: resendFromEmail,
+          to: targetEmail,
+          subject: 'איפוס סיסמה - ועד מבקשי ה\'',
+          html: htmlContent,
+        });
+        
+        // Check if there's an error in the response
+        if (result.error) {
+          console.error('❌ Resend returned error:', result.error);
+          
+          // If it's a validation error about email address, send to account email instead
+          if (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain')) {
+            console.log(`⚠️  Cannot send to ${targetEmail}. Sending to account email ${accountEmail} instead...`);
+            
+            // Update HTML to include the original email address
+            const htmlWithInfo = htmlContent.replace(
+              '<h2 style="color: #333;">איפוס סיסמה</h2>',
+              `<h2 style="color: #333;">איפוס סיסמה</h2>
+              <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>מייל מקורי:</strong> ${targetEmail}
+              </p>`
+            );
+            
+            // Send to account email
+            const accountResult = await resend.emails.send({
+              from: resendFromEmail,
+              to: accountEmail,
+              subject: `איפוס סיסמה - ${targetEmail}`,
+              html: htmlWithInfo,
+            });
+            
+            if (accountResult.error) {
+              console.error('❌ Failed to send to account email too:', accountResult.error);
+              return false;
+            }
+            
+            console.log('✅ Password reset email sent to account email:', accountEmail);
+            console.log('📧 Email ID:', accountResult.data?.id || accountResult.id);
+            console.log(`📧 Original request was for: ${targetEmail}`);
+            return true;
+          }
+          
+          throw new Error(result.error.message || 'Resend API error');
+        }
+        
+        console.log('✅ Password reset email sent successfully via Resend');
+        console.log('📧 Email ID:', result.data?.id || result.id);
+        return true;
+      } catch (resendError) {
+        console.error('❌ Resend error:', resendError.message || resendError);
+        // Don't throw - fallback to showing code in console for development
+        return false;
+      }
     }
 
     // Fallback to nodemailer
     const transporter = createTransporter();
     if (transporter) {
-      await transporter.sendMail({
+      console.log(`📧 Sending password reset email to ${email} via Nodemailer...`);
+      const result = await transporter.sendMail({
         from: fromEmail,
         to: email,
         subject: 'איפוס סיסמה - ועד מבקשי ה\'',
         html: htmlContent,
       });
+      console.log('✅ Password reset email sent successfully via Nodemailer:', result.messageId);
       return true;
     }
 
+    console.error('❌ No email service available');
     return false;
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error('❌ Error sending password reset email:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+    });
     return false;
   }
 };
