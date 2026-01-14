@@ -32,13 +32,26 @@ router.post(
         },
       });
 
-      // Send emails (don't wait for them to complete)
-      sendContactEmailToAdmin({ name, email, content }).catch(err => 
-        console.error('Failed to send email to admin:', err)
-      );
-      sendContactConfirmationToUser(email, name).catch(err => 
-        console.error('Failed to send confirmation email to user:', err)
-      );
+      // Send emails to admin (wait for it to complete to ensure it's sent)
+      console.log('📧 Sending contact email to admin...');
+      const emailSent = await sendContactEmailToAdmin({ name, email, content });
+      if (emailSent) {
+        console.log('✅ Contact email sent to admin successfully');
+      } else {
+        console.warn('⚠️  Contact email to admin was not sent (check email configuration)');
+      }
+      
+      // Wait a bit to avoid rate limiting (Resend allows 2 requests per second)
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
+      // Send confirmation to user (don't wait, but with delay to avoid rate limit)
+      sendContactConfirmationToUser(email, name).catch(err => {
+        if (err.message?.includes('rate limit') || err.message?.includes('Too many requests')) {
+          console.warn('⚠️  Rate limit reached for user confirmation email. Will retry later.');
+        } else {
+          console.error('Failed to send confirmation email to user:', err);
+        }
+      });
 
       res.status(201).json({
         success: true,

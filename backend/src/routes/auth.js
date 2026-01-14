@@ -93,11 +93,39 @@ router.get('/verify', async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'No token provided' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
       if (err) {
         return res.status(403).json({ success: false, error: 'Invalid token' });
       }
-      res.json({ success: true, user: decoded });
+      
+      // Get user from database to ensure they still exist and are verified
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: decoded.userId },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            emailVerified: true,
+          },
+        });
+
+        if (!user || !user.emailVerified) {
+          return res.status(403).json({ success: false, error: 'User not found or not verified' });
+        }
+
+        res.json({ 
+          success: true, 
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+          }
+        });
+      } catch (dbError) {
+        console.error('Database error in verify:', dbError);
+        return res.status(500).json({ success: false, error: 'Database error' });
+      }
     });
   } catch (error) {
     next(error);
@@ -413,6 +441,54 @@ router.post(
           debugCode: resetCode,
           debugMessage: 'Email not sent - Resend requires verified domain. Code: ' + resetCode
         }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Verify reset code (before allowing password reset)
+router.post(
+  '/verify-reset-code',
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('code').isString().trim().notEmpty().withMessage('Code is required'),
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+
+      const { email, code } = req.body;
+      const normalizedCode = String(code).trim().replace(/\s/g, '');
+
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user || !user.passwordHash) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      if (!user.resetPasswordCode) {
+        return res.status(400).json({ success: false, error: 'No reset code found. Please request a new one.' });
+      }
+
+      if (user.resetPasswordCode !== normalizedCode) {
+        return res.status(400).json({ success: false, error: 'קוד איפוס שגוי. אנא בדקו את הקוד שקיבלתם במייל.' });
+      }
+
+      if (!user.resetPasswordCodeExpires || user.resetPasswordCodeExpires < new Date()) {
+        return res.status(400).json({ success: false, error: 'קוד איפוס פג תוקף. אנא בקשו קוד חדש.' });
+      }
+
+      // Code is valid - return success (don't clear the code yet, we'll do that in reset-password)
+      res.json({
+        success: true,
+        message: 'קוד איפוס אומת בהצלחה',
       });
     } catch (error) {
       next(error);

@@ -7,11 +7,21 @@ import { authenticateToken } from '../middleware/auth.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Fix SSL certificate issues in development (for Cloudinary)
+// This is needed when there's a proxy or firewall interfering with SSL
+if (process.env.NODE_ENV === 'development') {
+  // Disable SSL verification for all HTTPS requests in development
+  // This fixes "self-signed certificate in certificate chain" error
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  console.warn('⚠️  SSL verification disabled for development (Cloudinary)');
+}
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
 });
 
 // Configure Multer for memory storage
@@ -37,7 +47,12 @@ const upload = multer({
 // Upload media (admin only)
 router.post('/upload', authenticateToken, upload.single('file'), async (req, res, next) => {
   try {
+    console.log('📤 Upload request received');
+    console.log('File:', req.file ? { name: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype } : 'No file');
+    console.log('Body:', req.body);
+    
     if (!req.file) {
+      console.error('❌ No file uploaded');
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
@@ -47,8 +62,19 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     // Determine media type
     const isVideo = file.mimetype.startsWith('video/');
     const type = isVideo ? 'video' : 'image';
+    console.log(`📹 Media type: ${type}`);
+
+    // Check Cloudinary config
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('❌ Cloudinary credentials missing');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Cloudinary configuration missing. Please check your .env file.' 
+      });
+    }
 
     // Upload to Cloudinary
+    console.log('☁️ Uploading to Cloudinary...');
     const uploadOptions = {
       resource_type: isVideo ? 'video' : 'image',
       folder: 'vaad-mevakshei-hashem',
@@ -58,14 +84,20 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error('❌ Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            console.log('✅ Cloudinary upload successful:', result.public_id);
+            resolve(result);
+          }
         }
       );
       uploadStream.end(file.buffer);
     });
 
     // Save to database
+    console.log('💾 Saving to database...');
     const media = await prisma.media.create({
       data: {
         url: result.secure_url,
@@ -76,12 +108,20 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
         description: description || null,
       },
     });
+    console.log('✅ Media saved:', media.id);
 
     res.status(201).json({
       success: true,
       data: media,
     });
   } catch (error) {
+    console.error('❌ Upload error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      stack: error.stack,
+    });
     next(error);
   }
 });

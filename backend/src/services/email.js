@@ -1,6 +1,9 @@
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
+// Helper to add delay between email sends (Resend rate limit: 2 requests/second)
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Check if email is enabled
 const isEmailEnabled = () => {
   return !!(process.env.RESEND_API_KEY || (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD));
@@ -56,36 +59,48 @@ export const sendContactEmailToAdmin = async (messageData) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      // Resend only allows sending to account email without domain verification
+      // Always send to Resend account email and include admin email in the message
+      const resendAccountEmail = process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      
+      // Update HTML to include the admin email (so you know it's for the admin)
+      const htmlWithAdminInfo = htmlContent.replace(
+        '<h2 style="color: #333;">הודעה חדשה מאתר</h2>',
+        `<h2 style="color: #333;">הודעה חדשה מאתר</h2>
+        <p style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+          <strong>מיועד למנהל:</strong> ${adminEmail}
+        </p>`
+      );
       
       try {
+        console.log(`📧 Sending contact email to Resend account: ${resendAccountEmail}`);
+        console.log(`📧 Intended for admin: ${adminEmail}`);
+        
         const result = await resend.emails.send({
           from: fromEmail,
-          to: adminEmail,
-          subject: `הודעה חדשה מאתר - ${messageData.name}`,
-          html: htmlContent,
+          to: resendAccountEmail,
+          subject: `הודעה חדשה מאתר - ${messageData.name} (למנהל: ${adminEmail})`,
+          html: htmlWithAdminInfo,
         });
         
-        // If error about verified domain, send to account email
-        if (result.error && (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain'))) {
-          console.log(`⚠️  Cannot send to ${adminEmail}. Sending to account email ${accountEmail} instead...`);
-          await resend.emails.send({
-            from: fromEmail,
-            to: accountEmail,
-            subject: `הודעה חדשה מאתר - ${messageData.name}`,
-            html: htmlContent,
-          });
-          console.log(`✅ Contact email sent to account email: ${accountEmail}`);
-          return true;
-        }
-        
         if (result.error) {
+          console.error('❌ Resend returned error:', result.error);
+          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
+            console.warn('⚠️  Rate limit reached. Email will be sent when rate limit resets.');
+            return false;
+          }
           throw new Error(result.error.message || 'Resend API error');
         }
         
+        console.log(`✅ Contact email sent to Resend account email: ${resendAccountEmail}`);
+        console.log(`📧 Email ID: ${result.data?.id || result.id}`);
+        console.log(`📧 Intended for admin: ${adminEmail}`);
         return true;
       } catch (error) {
         console.error('Error sending email to admin:', error);
+        if (error.message?.includes('rate limit') || error.message?.includes('Too many requests')) {
+          console.warn('⚠️  Rate limit reached. Email will be sent when rate limit resets.');
+        }
         return false;
       }
     }
@@ -133,6 +148,9 @@ export const sendContactConfirmationToUser = async (userEmail, userName) => {
       const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
       
       try {
+        // Add delay to avoid rate limit (Resend: 2 requests/second)
+        await delay(600);
+        
         const result = await resend.emails.send({
           from: fromEmail,
           to: userEmail,
@@ -148,11 +166,19 @@ export const sendContactConfirmationToUser = async (userEmail, userName) => {
         }
         
         if (result.error) {
+          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
+            console.warn('⚠️  Rate limit reached for user confirmation email. Skipping.');
+            return false;
+          }
           throw new Error(result.error.message || 'Resend API error');
         }
         
         return true;
       } catch (error) {
+        if (error.message?.includes('rate limit') || error.message?.includes('Too many requests')) {
+          console.warn('⚠️  Rate limit reached for user confirmation email. Skipping.');
+          return false;
+        }
         console.error('Error sending confirmation email to user:', error);
         return false;
       }
@@ -204,44 +230,46 @@ export const sendVerificationEmail = async (email, code) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      // Resend only allows sending to account email without domain verification
+      // Always send to Resend account email and include original email in message
+      const resendAccountEmail = process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
       
       try {
+        // Update HTML to include the original email address
+        const htmlWithInfo = htmlContent.replace(
+          '<h2 style="color: #333;">קוד אימות</h2>',
+          `<h2 style="color: #333;">קוד אימות</h2>
+          <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+            <strong>מייל מקורי:</strong> ${email}
+          </p>`
+        );
+        
+        console.log(`📧 Sending verification code to: ${resendAccountEmail}`);
+        console.log(`📧 Original email: ${email}`);
+        
         const result = await resend.emails.send({
           from: fromEmail,
-          to: email,
-          subject: 'קוד אימות - ועד מבקשי ה\'',
-          html: htmlContent,
+          to: resendAccountEmail,
+          subject: `קוד אימות - ${email}`,
+          html: htmlWithInfo,
         });
         
-        // If error about verified domain, send to account email
-        if (result.error && (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain'))) {
-          console.log(`⚠️  Cannot send to ${email}. Sending to account email ${accountEmail} instead...`);
-          
-          const htmlWithInfo = htmlContent.replace(
-            '<h2 style="color: #333;">קוד אימות</h2>',
-            `<h2 style="color: #333;">קוד אימות</h2>
-            <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
-              <strong>מייל מקורי:</strong> ${email}
-            </p>`
-          );
-          
-          await resend.emails.send({
-            from: fromEmail,
-            to: accountEmail,
-            subject: `קוד אימות - ${email}`,
-            html: htmlWithInfo,
-          });
-          console.log(`✅ Verification code sent to account email: ${accountEmail}`);
-          return true;
-        }
-        
         if (result.error) {
+          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
+            console.warn('⚠️  Rate limit reached for verification email. Skipping.');
+            return false;
+          }
           throw new Error(result.error.message || 'Resend API error');
         }
         
+        console.log(`✅ Verification code sent to: ${resendAccountEmail}`);
+        console.log(`📧 Email ID: ${result.data?.id || result.id}`);
         return true;
       } catch (error) {
+        if (error.message?.includes('rate limit') || error.message?.includes('Too many requests')) {
+          console.warn('⚠️  Rate limit reached for verification email. Skipping.');
+          return false;
+        }
         console.error('Error sending verification email:', error);
         return false;
       }
@@ -297,68 +325,53 @@ export const sendPasswordResetEmail = async (email, code) => {
     // Use Resend if available
     const resend = getResendClient();
     if (resend) {
-      // Resend allows sending to account email without domain verification
-      // Use ADMIN_EMAIL or RESEND_ACCOUNT_EMAIL as fallback recipient
-      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
+      // Resend only allows sending to account email (r0533160762@gmail.com) without domain verification
+      // Always send to Resend account email and include the original email in the message
+      const resendAccountEmail = process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
       const targetEmail = email;
       
-      console.log(`📧 Sending password reset email to ${targetEmail} via Resend...`);
+      console.log(`📧 Sending password reset email for ${targetEmail} via Resend...`);
+      console.log(`📧 Sending to Resend account: ${resendAccountEmail}`);
       console.log(`📧 From: ${resendFromEmail}`);
       
       try {
-        // Try sending to the requested email first
+        // Update HTML to include the original email address
+        const htmlWithInfo = htmlContent.replace(
+          '<h2 style="color: #333;">איפוס סיסמה</h2>',
+          `<h2 style="color: #333;">איפוס סיסמה</h2>
+          <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+            <strong>מייל מקורי שביקש איפוס:</strong> ${targetEmail}
+          </p>`
+        );
+        
+        // Send directly to Resend account email (or ADMIN_EMAIL if it's the account email)
         const result = await resend.emails.send({
           from: resendFromEmail,
-          to: targetEmail,
-          subject: 'איפוס סיסמה - ועד מבקשי ה\'',
-          html: htmlContent,
+          to: resendAccountEmail,
+          subject: `איפוס סיסמה - ${targetEmail}`,
+          html: htmlWithInfo,
         });
         
         // Check if there's an error in the response
         if (result.error) {
           console.error('❌ Resend returned error:', result.error);
-          
-          // If it's a validation error about email address, send to account email instead
-          if (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain')) {
-            console.log(`⚠️  Cannot send to ${targetEmail}. Sending to account email ${accountEmail} instead...`);
-            
-            // Update HTML to include the original email address
-            const htmlWithInfo = htmlContent.replace(
-              '<h2 style="color: #333;">איפוס סיסמה</h2>',
-              `<h2 style="color: #333;">איפוס סיסמה</h2>
-              <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                <strong>מייל מקורי:</strong> ${targetEmail}
-              </p>`
-            );
-            
-            // Send to account email
-            const accountResult = await resend.emails.send({
-              from: resendFromEmail,
-              to: accountEmail,
-              subject: `איפוס סיסמה - ${targetEmail}`,
-              html: htmlWithInfo,
-            });
-            
-            if (accountResult.error) {
-              console.error('❌ Failed to send to account email too:', accountResult.error);
-              return false;
-            }
-            
-            console.log('✅ Password reset email sent to account email:', accountEmail);
-            console.log('📧 Email ID:', accountResult.data?.id || accountResult.id);
-            console.log(`📧 Original request was for: ${targetEmail}`);
-            return true;
+          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
+            console.warn('⚠️  Rate limit reached for password reset email. Code will be shown in console.');
+            return false;
           }
-          
-          throw new Error(result.error.message || 'Resend API error');
+          return false;
         }
         
-        console.log('✅ Password reset email sent successfully via Resend');
+        console.log('✅ Password reset email sent to:', resendAccountEmail);
         console.log('📧 Email ID:', result.data?.id || result.id);
+        console.log(`📧 Original request was for: ${targetEmail}`);
         return true;
       } catch (resendError) {
+        if (resendError.message?.includes('rate limit') || resendError.message?.includes('Too many requests')) {
+          console.warn('⚠️  Rate limit reached for password reset email. Code will be shown in console.');
+          return false;
+        }
         console.error('❌ Resend error:', resendError.message || resendError);
-        // Don't throw - fallback to showing code in console for development
         return false;
       }
     }

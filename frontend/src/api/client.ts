@@ -1,14 +1,30 @@
 import axios from 'axios'
 
 // Backend URL configuration
-// For production on Render, always use this URL
-const API_URL = 'https://vaad-backend-i96q.onrender.com'
+// Priority: 1. VITE_API_URL env variable, 2. Render production URL, 3. Localhost for development
+const getApiUrl = () => {
+  // If VITE_API_URL is set, use it (for local development or custom backend)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // For production on Render (when deployed)
+  if (import.meta.env.PROD) {
+    return 'https://vaad-backend-i96q.onrender.com'
+  }
+  
+  // Default to localhost for development
+  return 'http://localhost:5000'
+}
+
+const API_URL = getApiUrl()
 
 // Debug logging
 if (typeof window !== 'undefined') {
   console.log('🔗 API Configuration:')
   console.log('  - API_URL:', API_URL)
   console.log('  - VITE_API_URL env:', import.meta.env.VITE_API_URL || '(not set)')
+  console.log('  - PROD mode:', import.meta.env.PROD)
   console.log('  - Window hostname:', window.location.hostname)
   console.log('✅ Using API URL:', API_URL)
 }

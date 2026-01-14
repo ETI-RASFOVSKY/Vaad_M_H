@@ -13,8 +13,8 @@ import { AuthProvider } from './context/AuthContext'
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
 function App() {
-  return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+  // Only wrap with GoogleOAuthProvider if client ID is provided
+  const AppContent = () => (
       <AuthProvider>
         <Router>
           <Routes>
@@ -30,6 +30,16 @@ function App() {
           </Routes>
         </Router>
       </AuthProvider>
+  )
+
+  // If Google Client ID is not set, render without GoogleOAuthProvider
+  if (!GOOGLE_CLIENT_ID) {
+    return <AppContent />
+  }
+
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AppContent />
     </GoogleOAuthProvider>
   )
 }

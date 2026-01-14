@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { GoogleLogin } from '@react-oauth/google'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 import client from '../../api/client'
 
 const loginSchema = z.object({
@@ -26,9 +28,21 @@ const verifySchema = z.object({
   code: z.string().length(6, 'קוד חייב להכיל 6 ספרות'),
 })
 
+const verifyResetCodeSchema = z.object({
+  code: z.string().min(1, 'קוד נדרש').trim(),
+})
+
+const newPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'סיסמה חייבת להכיל לפחות 8 תווים'),
+  confirmPassword: z.string().min(8, 'סיסמה חייבת להכיל לפחות 8 תווים'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: 'הסיסמאות אינן תואמות',
+  path: ['confirmPassword'],
+})
+
 const resetPasswordSchema = z.object({
-  email: z.string().email('כתובת אימייל לא תקינה'),
-  code: z.string().length(6, 'קוד חייב להכיל 6 ספרות'),
+  email: z.string().email('כתובת אימייל לא תקינה').optional(),
+  code: z.string().min(1, 'קוד נדרש').trim(),
   newPassword: z.string().min(8, 'סיסמה חייבת להכיל לפחות 8 תווים'),
   confirmPassword: z.string().min(8, 'סיסמה חייבת להכיל לפחות 8 תווים'),
 }).refine((data) => data.newPassword === data.confirmPassword, {
@@ -39,9 +53,11 @@ const resetPasswordSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 type RegisterFormData = z.infer<typeof registerSchema>
 type VerifyFormData = z.infer<typeof verifySchema>
+type VerifyResetCodeFormData = z.infer<typeof verifyResetCodeSchema>
+type NewPasswordFormData = z.infer<typeof newPasswordSchema>
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 
-type View = 'login' | 'register' | 'verify' | 'forgot-password' | 'reset-password'
+type View = 'login' | 'register' | 'verify' | 'forgot-password' | 'verify-reset-code' | 'reset-password'
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -50,6 +66,7 @@ export default function AdminLogin() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [pendingEmail, setPendingEmail] = useState('')
+  const [verifiedResetCode, setVerifiedResetCode] = useState<string | null>(null)
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -63,8 +80,12 @@ export default function AdminLogin() {
     resolver: zodResolver(verifySchema),
   })
 
-  const resetPasswordForm = useForm<ResetPasswordFormData>({
-    resolver: zodResolver(resetPasswordSchema),
+  const verifyResetCodeForm = useForm<VerifyResetCodeFormData>({
+    resolver: zodResolver(verifyResetCodeSchema),
+  })
+
+  const newPasswordForm = useForm<NewPasswordFormData>({
+    resolver: zodResolver(newPasswordSchema),
   })
 
   const onLoginSubmit = async (data: LoginFormData) => {
@@ -146,21 +167,73 @@ export default function AdminLogin() {
 
       if (response.data.success) {
         setPendingEmail(data.email)
-        setView('reset-password')
-        setSuccess('קוד איפוס סיסמה נשלח לאימייל שלכם.')
+        setView('verify-reset-code')
+        
+        // Check if email was actually sent
+        if (response.data.debugCode && response.data.debugMessage) {
+          setError(`מייל לא נשלח (הגדרת מייל חסרה). קוד איפוס: ${response.data.debugCode}`)
+        } else {
+          setSuccess('קוד איפוס סיסמה נשלח לאימייל שלכם.')
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'שגיאה בשליחת קוד איפוס.')
     }
   }
 
-  const onResetPasswordSubmit = async (data: ResetPasswordFormData) => {
+  const onVerifyResetCodeSubmit = async (data: VerifyResetCodeFormData) => {
     try {
       setError('')
       setSuccess('')
+      
+      if (!pendingEmail) {
+        setError('שגיאה: לא נמצא אימייל. אנא בקשו קוד איפוס מחדש.')
+        return
+      }
+      
+      // Normalize code - remove spaces
+      const normalizedCode = String(data.code).trim().replace(/\s/g, '')
+      
+      // Verify the code
+      const response = await client.post('/api/auth/verify-reset-code', {
+        email: pendingEmail,
+        code: normalizedCode,
+      })
+
+      if (response.data.success) {
+        setVerifiedResetCode(normalizedCode)
+        setSuccess('קוד איפוס אומת בהצלחה! כעת תוכלו להזין סיסמה חדשה.')
+        setTimeout(() => {
+          setView('reset-password')
+          verifyResetCodeForm.reset()
+        }, 1500)
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || err.message || 'קוד איפוס שגוי או פג תוקף.'
+      setError(errorMessage)
+      console.error('Verify reset code error:', err)
+    }
+  }
+
+  const onNewPasswordSubmit = async (data: NewPasswordFormData) => {
+    try {
+      setError('')
+      setSuccess('')
+      
+      if (!pendingEmail) {
+        setError('שגיאה: לא נמצא אימייל. אנא בקשו קוד איפוס מחדש.')
+        return
+      }
+      
+      if (!verifiedResetCode) {
+        setError('שגיאה: קוד איפוס לא מאומת. אנא אמתו את הקוד תחילה.')
+        setView('verify-reset-code')
+        return
+      }
+      
       const response = await client.post('/api/auth/reset-password', {
         email: pendingEmail,
-        code: data.code,
+        code: verifiedResetCode,
         newPassword: data.newPassword,
       })
 
@@ -169,11 +242,14 @@ export default function AdminLogin() {
         setTimeout(() => {
           setView('login')
           setPendingEmail('')
-          resetPasswordForm.reset()
+          newPasswordForm.reset()
+          verifyResetCodeForm.reset()
         }, 2000)
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'קוד איפוס שגוי או פג תוקף.')
+      const errorMessage = err.response?.data?.error || err.message || 'שגיאה באיפוס הסיסמה.'
+      setError(errorMessage)
+      console.error('Reset password error:', err)
     }
   }
 
@@ -214,7 +290,8 @@ export default function AdminLogin() {
             {view === 'register' && 'הרשמת מנהל'}
             {view === 'verify' && 'אימות אימייל'}
             {view === 'forgot-password' && 'איפוס סיסמה'}
-            {view === 'reset-password' && 'איפוס סיסמה'}
+            {view === 'verify-reset-code' && 'אימות קוד איפוס'}
+            {view === 'reset-password' && 'סיסמה חדשה'}
           </h1>
           <p className="text-gray-600">אזור ניהול האתר</p>
         </div>
@@ -306,22 +383,26 @@ export default function AdminLogin() {
                   {loginForm.formState.isSubmitting ? 'מתחבר...' : 'התחבר'}
                 </button>
 
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">או</span>
-                  </div>
-                </div>
+                {GOOGLE_CLIENT_ID && (
+                  <>
+                    <div className="relative my-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">או</span>
+                      </div>
+                    </div>
 
-                <div className="flex justify-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                    useOneTap
-                  />
-                </div>
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={handleGoogleError}
+                        useOneTap
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="text-center">
                   <button
@@ -435,22 +516,26 @@ export default function AdminLogin() {
                   {registerForm.formState.isSubmitting ? 'נרשם...' : 'הרשם'}
                 </button>
 
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">או</span>
-                  </div>
-                </div>
+                {GOOGLE_CLIENT_ID && (
+                  <>
+                    <div className="relative my-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">או</span>
+                      </div>
+                    </div>
 
-                <div className="flex justify-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                    useOneTap
-                  />
-                </div>
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={handleGoogleError}
+                        useOneTap
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="text-center">
                   <button
@@ -618,9 +703,9 @@ export default function AdminLogin() {
             </motion.div>
           )}
 
-          {view === 'reset-password' && (
+          {view === 'verify-reset-code' && (
             <motion.div
-              key="reset-password"
+              key="verify-reset-code"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
@@ -629,71 +714,30 @@ export default function AdminLogin() {
                 <p className="text-gray-700 text-center">
                   קוד איפוס נשלח ל-<strong>{pendingEmail}</strong>
                 </p>
+                <p className="text-sm text-gray-600 text-center">
+                  אנא הזינו את הקוד שקיבלתם במייל
+                </p>
 
-                <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-6">
+                <form onSubmit={verifyResetCodeForm.handleSubmit(onVerifyResetCodeSubmit)} className="space-y-6">
                   <div>
-                    <label htmlFor="reset-code" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label htmlFor="verify-reset-code" className="block text-sm font-semibold text-gray-700 mb-2">
                       קוד איפוס
                     </label>
                     <input
                       type="text"
-                      id="reset-code"
-                      {...resetPasswordForm.register('code')}
-                      maxLength={6}
+                      id="verify-reset-code"
+                      {...verifyResetCodeForm.register('code')}
+                      maxLength={20}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 text-center text-2xl tracking-widest ${
-                        resetPasswordForm.formState.errors.code
+                        verifyResetCodeForm.formState.errors.code
                           ? 'border-red-500 focus:ring-red-500'
                           : 'border-gray-300 focus:ring-gold'
                       }`}
                       placeholder="000000"
                     />
-                    {resetPasswordForm.formState.errors.code && (
+                    {verifyResetCodeForm.formState.errors.code && (
                       <p className="mt-1 text-sm text-red-600">
-                        {resetPasswordForm.formState.errors.code.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label htmlFor="reset-new-password" className="block text-sm font-semibold text-gray-700 mb-2">
-                      סיסמה חדשה
-                    </label>
-                    <input
-                      type="password"
-                      id="reset-new-password"
-                      {...resetPasswordForm.register('newPassword')}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                        resetPasswordForm.formState.errors.newPassword
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-gold'
-                      }`}
-                      placeholder="לפחות 8 תווים"
-                    />
-                    {resetPasswordForm.formState.errors.newPassword && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {resetPasswordForm.formState.errors.newPassword.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label htmlFor="reset-confirm-password" className="block text-sm font-semibold text-gray-700 mb-2">
-                      אימות סיסמה
-                    </label>
-                    <input
-                      type="password"
-                      id="reset-confirm-password"
-                      {...resetPasswordForm.register('confirmPassword')}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                        resetPasswordForm.formState.errors.confirmPassword
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-gold'
-                      }`}
-                      placeholder="הזן שוב את הסיסמה"
-                    />
-                    {resetPasswordForm.formState.errors.confirmPassword && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {resetPasswordForm.formState.errors.confirmPassword.message}
+                        {verifyResetCodeForm.formState.errors.code.message}
                       </p>
                     )}
                   </div>
@@ -712,10 +756,109 @@ export default function AdminLogin() {
 
                   <button
                     type="submit"
-                    disabled={resetPasswordForm.formState.isSubmitting}
+                    disabled={verifyResetCodeForm.formState.isSubmitting}
                     className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {resetPasswordForm.formState.isSubmitting ? 'מאפס...' : 'אפס סיסמה'}
+                    {verifyResetCodeForm.formState.isSubmitting ? 'מאמת...' : 'אמת קוד'}
+                  </button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView('forgot-password')
+                        setError('')
+                        setSuccess('')
+                        verifyResetCodeForm.reset()
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      חזור לבקשת קוד חדש
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
+          {view === 'reset-password' && (
+            <motion.div
+              key="reset-password"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <div className="space-y-6">
+                <p className="text-gray-700 text-center">
+                  קוד איפוס אומת בהצלחה!
+                </p>
+                <p className="text-sm text-gray-600 text-center">
+                  כעת תוכלו להזין סיסמה חדשה
+                </p>
+
+                <form onSubmit={newPasswordForm.handleSubmit(onNewPasswordSubmit)} className="space-y-6">
+                  <div>
+                    <label htmlFor="reset-new-password" className="block text-sm font-semibold text-gray-700 mb-2">
+                      סיסמה חדשה
+                    </label>
+                    <input
+                      type="password"
+                      id="reset-new-password"
+                      {...newPasswordForm.register('newPassword')}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                        newPasswordForm.formState.errors.newPassword
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-gold'
+                      }`}
+                      placeholder="לפחות 8 תווים"
+                    />
+                    {newPasswordForm.formState.errors.newPassword && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {newPasswordForm.formState.errors.newPassword.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="reset-confirm-password" className="block text-sm font-semibold text-gray-700 mb-2">
+                      אימות סיסמה
+                    </label>
+                    <input
+                      type="password"
+                      id="reset-confirm-password"
+                      {...newPasswordForm.register('confirmPassword')}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                        newPasswordForm.formState.errors.confirmPassword
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-gold'
+                      }`}
+                      placeholder="הזן שוב את הסיסמה"
+                    />
+                    {newPasswordForm.formState.errors.confirmPassword && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {newPasswordForm.formState.errors.confirmPassword.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+                      {error}
+                    </div>
+                  )}
+
+                  {success && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
+                      {success}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={newPasswordForm.formState.isSubmitting}
+                    className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {newPasswordForm.formState.isSubmitting ? 'מאפס...' : 'אפס סיסמה'}
                   </button>
                 </form>
 
