@@ -20,6 +20,8 @@ export const errorHandler = (err, req, res, next) => {
     message = 'Cloudinary error: ' + err.message;
   } else if (err.message?.includes('Invalid file type')) {
     message = err.message;
+  } else if (err.code === 'LIMIT_FILE_SIZE' || err.message?.includes('File too large')) {
+    message = 'הקובץ גדול מדי. הגודל המקסימלי הוא 200MB. אנא נסו קובץ קטן יותר או דחוסו את הקובץ.';
   }
 
   res.status(statusCode).json({
