@@ -40,22 +40,12 @@ const newPasswordSchema = z.object({
   path: ['confirmPassword'],
 })
 
-const resetPasswordSchema = z.object({
-  email: z.string().email('כתובת אימייל לא תקינה').optional(),
-  code: z.string().min(1, 'קוד נדרש').trim(),
-  newPassword: z.string().min(8, 'סיסמה חייבת להכיל לפחות 8 תווים'),
-  confirmPassword: z.string().min(8, 'סיסמה חייבת להכיל לפחות 8 תווים'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: 'הסיסמאות אינן תואמות',
-  path: ['confirmPassword'],
-})
 
 type LoginFormData = z.infer<typeof loginSchema>
 type RegisterFormData = z.infer<typeof registerSchema>
 type VerifyFormData = z.infer<typeof verifySchema>
 type VerifyResetCodeFormData = z.infer<typeof verifyResetCodeSchema>
 type NewPasswordFormData = z.infer<typeof newPasswordSchema>
-type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 
 type View = 'login' | 'register' | 'verify' | 'forgot-password' | 'verify-reset-code' | 'reset-password'
 
@@ -262,7 +252,7 @@ export default function AdminLogin() {
       })
 
       if (response.data.success) {
-        const { token, user } = response.data
+        const { token } = response.data
         localStorage.setItem('token', token)
         // Reload to update auth context
         window.location.href = '/admin'
@@ -870,7 +860,8 @@ export default function AdminLogin() {
                       setError('')
                       setSuccess('')
                       setPendingEmail('')
-                      resetPasswordForm.reset()
+                      newPasswordForm.reset()
+                      verifyResetCodeForm.reset()
                     }}
                     className="text-sm text-gray-600 hover:text-gray-900"
                   >
