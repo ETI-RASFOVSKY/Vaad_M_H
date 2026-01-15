@@ -26,21 +26,30 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('❌ Login validation errors:', errors.array());
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
       const { email, password } = req.body;
+      console.log(`🔐 Login attempt for: ${email}`);
 
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        console.log(`❌ User not found: ${email}`);
+        return res.status(401).json({ 
+          success: false, 
+          error: 'אימייל או סיסמה שגויים' 
+        });
       }
+
+      console.log(`✅ User found: ${email}, emailVerified: ${user.emailVerified}, hasPassword: ${!!user.passwordHash}`);
 
       // Check if email is verified
       if (!user.emailVerified) {
+        console.log(`⚠️  Email not verified: ${email}`);
         return res.status(403).json({ 
           success: false, 
           error: 'האימייל לא אומת. אנא אמתו את האימייל שלכם תחילה דרך דף ההרשמה.',
@@ -50,25 +59,33 @@ router.post(
 
       // Check if user has password (not Google-only user)
       if (!user.passwordHash) {
+        console.log(`⚠️  User has no password (Google-only): ${email}`);
         return res.status(401).json({ 
           success: false, 
-          error: 'Please use Google sign-in for this account.' 
+          error: 'חשבון זה מחובר דרך Google בלבד. אנא השתמשו בהתחברות עם Google.' 
         });
       }
 
+      console.log(`🔑 Comparing password for: ${email}`);
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
       if (!isValidPassword) {
-        return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        console.log(`❌ Invalid password for: ${email}`);
+        return res.status(401).json({ 
+          success: false, 
+          error: 'אימייל או סיסמה שגויים' 
+        });
       }
 
+      console.log(`✅ Password valid for: ${email}`);
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
 
-      res.json({
+      console.log(`✅ Login successful for: ${email}`);
+      const responseData = {
         success: true,
         token,
         user: {
@@ -76,8 +93,19 @@ router.post(
           email: user.email,
           role: user.role,
         },
-      });
+      };
+      console.log(`📤 Sending response:`, { success: responseData.success, hasToken: !!responseData.token, userEmail: responseData.user.email });
+      
+      try {
+        res.status(200).json(responseData);
+        console.log(`✅ Response sent successfully for: ${email}`);
+      } catch (responseError) {
+        console.error('❌ Error sending response:', responseError);
+        throw responseError;
+      }
     } catch (error) {
+      console.error('❌ Login error:', error);
+      console.error('Error stack:', error.stack);
       next(error);
     }
   }
