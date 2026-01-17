@@ -1,7 +1,11 @@
 import axios from 'axios'
 
 // Backend URL configuration
-// Note: baseURL should NOT include /api - it's added in the request paths
+// Default fallback URL - always use Render backend as fallback in production
+const FALLBACK_API_URL = 'https://vaad-m-h.onrender.com'
+const LOCAL_API_URL = 'http://localhost:5000'
+
+// Get API URL based on environment
 const getApiUrl = () => {
   // 1. Explicit env (Vercel / local) - should be full URL without /api
   const viteApiUrl = import.meta.env.VITE_API_URL
@@ -9,46 +13,39 @@ const getApiUrl = () => {
     const url = viteApiUrl.trim()
     // Remove trailing /api if present
     const cleanUrl = url.replace(/\/api\/?$/, '')
-    if (cleanUrl) {
+    if (cleanUrl && cleanUrl.length > 0) {
       return cleanUrl
     }
   }
 
-  // 2. Production fallback - Render backend
-  // Check if we're in production by multiple methods
-  // In Vercel, PROD might not be set correctly, so check hostname first
-  let isProduction = false
-  
+  // 2. Check if we're in production by checking hostname (runtime check)
+  // This is more reliable than env variables in Vercel
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const hostname = window.location.hostname
     // If hostname includes vercel.app, netlify.app, or render.com, it's production
-    isProduction = hostname.includes('vercel.app') || 
-                   hostname.includes('netlify.app') || 
-                   hostname.includes('render.com') ||
-                   (!hostname.includes('localhost') && hostname !== '127.0.0.1')
-  }
-  
-  // Also check env variables
-  if (!isProduction) {
-    isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production'
-  }
-  
-  if (isProduction) {
-    const prodUrl = 'https://vaad-m-h.onrender.com'
-    return prodUrl
+    if (hostname.includes('vercel.app') || 
+        hostname.includes('netlify.app') || 
+        hostname.includes('render.com') ||
+        (!hostname.includes('localhost') && hostname !== '127.0.0.1')) {
+      return FALLBACK_API_URL
+    }
   }
 
-  // 3. Local development
-  return 'http://localhost:5000'
+  // 3. Check env variables as fallback
+  if (import.meta.env.PROD === true || import.meta.env.MODE === 'production') {
+    return FALLBACK_API_URL
+  }
+
+  // 4. Local development
+  return LOCAL_API_URL
 }
 
 let API_URL = getApiUrl()
 
-// Ensure API_URL is never empty - use fallback if empty
+// Final safety check - ensure API_URL is never empty
 if (!API_URL || typeof API_URL !== 'string' || API_URL.trim() === '') {
   console.error('❌ API_URL is empty or invalid! Using fallback...')
-  // Fallback to Render backend URL
-  API_URL = 'https://vaad-m-h.onrender.com'
+  API_URL = FALLBACK_API_URL
   console.warn(`⚠️  Using fallback URL: ${API_URL}`)
 }
 
@@ -58,12 +55,11 @@ if (typeof window !== 'undefined') {
   console.log('  - API_URL:', API_URL)
   console.log('  - VITE_API_URL env:', import.meta.env.VITE_API_URL || '(not set)')
   console.log('  - PROD mode:', import.meta.env.PROD)
+  console.log('  - MODE:', import.meta.env.MODE)
   console.log('  - Window hostname:', window.location.hostname)
+  console.log('  - FALLBACK_API_URL:', FALLBACK_API_URL)
   console.log('✅ Using API URL:', API_URL)
 }
-
-// Default fallback URL - always use Render backend as fallback
-const FALLBACK_API_URL = 'https://vaad-m-h.onrender.com'
 
 const client = axios.create({
   baseURL: API_URL || FALLBACK_API_URL, // Use fallback if API_URL is empty
