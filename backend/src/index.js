@@ -48,14 +48,31 @@ const corsOptions = {
       process.env.FRONTEND_URL,
       'https://vaad-m-h.onrender.com',
       'https://vaad-m-h.vercel.app',
+      'https://vaad-m-h-frontend-realy.vercel.app',
+      'https://vaad-m-h-frontend-realy-*.vercel.app', // Vercel preview URLs
       'http://localhost:3000',
       'http://localhost:5173',
     ].filter(Boolean); // Remove undefined values
     
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin matches any allowed origin (including wildcard patterns)
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        // Handle wildcard patterns (for Vercel preview URLs)
+        const pattern = allowed.replace(/\*/g, '.*')
+        const regex = new RegExp(`^${pattern}$`)
+        return regex.test(origin)
+      }
+      return allowed === origin
+    })
+    
+    // Also check if origin is a Vercel preview URL (vaad-m-h-frontend-realy-*.vercel.app)
+    const isVercelPreview = /^https:\/\/vaad-m-h-frontend-realy-.*\.vercel\.app$/.test(origin)
+    
+    if (isAllowed || isVercelPreview) {
       callback(null, true);
     } else {
       console.warn(`⚠️  CORS blocked origin: ${origin}`);
+      console.warn(`📋 Allowed origins:`, allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
