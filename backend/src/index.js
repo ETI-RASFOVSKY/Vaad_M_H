@@ -32,12 +32,40 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(cors({
-  origin: true, // Allow all origins in development, can be restricted in production
+// CORS configuration - allow specific origins in production, all in development
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // In production, check against allowed origins
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'https://vaad-m-h.onrender.com',
+      'https://vaad-m-h.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:5173',
+    ].filter(Boolean); // Remove undefined values
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

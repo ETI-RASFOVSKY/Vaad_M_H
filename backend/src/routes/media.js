@@ -110,9 +110,21 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     });
     console.log('✅ Media saved:', media.id);
 
+    // Ensure consistent response format
+    const formattedMedia = {
+      id: media.id,
+      url: media.url,
+      cloudinaryId: media.cloudinaryId || null,
+      type: media.type,
+      category: media.category || null,
+      title: media.title || null,
+      description: media.description || null,
+      createdAt: media.createdAt,
+    };
+
     res.status(201).json({
       success: true,
-      data: media,
+      data: formattedMedia,
     });
   } catch (error) {
     console.error('❌ Upload error:', error);
@@ -140,9 +152,21 @@ router.get('/', async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Ensure consistent response format - map to ensure all fields are present
+    const formattedMedia = media.map(item => ({
+      id: item.id,
+      url: item.url,
+      cloudinaryId: item.cloudinaryId || null,
+      type: item.type,
+      category: item.category || null,
+      title: item.title || null,
+      description: item.description || null,
+      createdAt: item.createdAt,
+    }));
+
     res.json({
       success: true,
-      data: media,
+      data: formattedMedia,
     });
   } catch (error) {
     console.error('Error fetching media:', error);
