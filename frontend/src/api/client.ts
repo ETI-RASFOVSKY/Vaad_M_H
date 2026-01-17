@@ -1,22 +1,19 @@
 import axios from 'axios'
 
-// Backend URL configuration - use string literals to avoid minification issues
-const PRODUCTION_API_URL = 'https://vaad-m-h.onrender.com'
-
-// Get API URL based on environment (runtime check only)
-const getApiUrl = (): string => {
+// Backend URL configuration
+// Get API URL based on environment
+function getApiUrl(): string {
   // 1. Explicit env (Vercel / local) - should be full URL without /api
   const viteApiUrl = import.meta.env.VITE_API_URL
   if (viteApiUrl && typeof viteApiUrl === 'string' && viteApiUrl.trim() !== '') {
     const url = viteApiUrl.trim()
-    // Remove trailing /api if present
     const cleanUrl = url.replace(/\/api\/?$/, '')
     if (cleanUrl && cleanUrl.length > 0) {
       return cleanUrl
     }
   }
 
-  // 2. Runtime check: Check hostname (only works in browser, not during build)
+  // 2. Runtime check: Check hostname (only works in browser)
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const hostname = window.location.hostname
     // If hostname includes vercel.app, netlify.app, or render.com, it's production
@@ -33,47 +30,43 @@ const getApiUrl = (): string => {
     return 'https://vaad-m-h.onrender.com'
   }
 
-  // 3. Build-time check: Use env variables (less reliable in Vercel)
+  // 3. Build-time check: Use env variables
   if (import.meta.env.PROD === true || import.meta.env.MODE === 'production') {
     return 'https://vaad-m-h.onrender.com'
   }
 
-  // 4. Default to local development (fallback)
+  // 4. Default to local development
   return 'http://localhost:5000'
 }
 
-// Get the API URL - ensure it's never empty
-const resolvedApiUrl = getApiUrl()
+// Get the API URL
+let apiUrl = getApiUrl()
 
-// Final safety check - ensure resolvedApiUrl is never empty
-let finalApiUrl: string
-if (!resolvedApiUrl || typeof resolvedApiUrl !== 'string' || resolvedApiUrl.trim() === '') {
-  console.error('❌ API_URL is empty or invalid! Using production fallback...')
-  finalApiUrl = 'https://vaad-m-h.onrender.com'
+// Ensure apiUrl is never empty - use production URL as fallback
+if (!apiUrl || typeof apiUrl !== 'string' || apiUrl.trim() === '') {
+  apiUrl = 'https://vaad-m-h.onrender.com'
 } else {
-  finalApiUrl = resolvedApiUrl.trim()
+  apiUrl = apiUrl.trim()
 }
 
-// Double-check: ensure finalApiUrl is never empty (use string literal directly)
-if (!finalApiUrl || finalApiUrl.length === 0) {
-  finalApiUrl = 'https://vaad-m-h.onrender.com'
-}
+// Final fallback - ensure apiUrl is never empty
+const baseURL = apiUrl || 'https://vaad-m-h.onrender.com'
 
-// Debug logging
+// Debug logging with string literals
 if (typeof window !== 'undefined') {
   console.log('🔗 API Configuration:')
-  console.log('  - API_URL:', finalApiUrl)
+  console.log('  - API_URL:', baseURL)
   console.log('  - VITE_API_URL env:', import.meta.env.VITE_API_URL || '(not set)')
   console.log('  - PROD mode:', import.meta.env.PROD)
   console.log('  - MODE:', import.meta.env.MODE)
   console.log('  - Window hostname:', window.location.hostname)
-  console.log('  - PRODUCTION_API_URL constant:', PRODUCTION_API_URL)
-  console.log('✅ Using API URL:', finalApiUrl)
+  console.log('  - Production URL:', 'https://vaad-m-h.onrender.com')
+  console.log('✅ Using API URL:', baseURL)
 }
 
-// Create axios client with explicit baseURL (use string literal as final fallback)
+// Create axios client - use string literal directly as final fallback
 const client = axios.create({
-  baseURL: finalApiUrl || 'https://vaad-m-h.onrender.com',
+  baseURL: baseURL || 'https://vaad-m-h.onrender.com',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -82,10 +75,11 @@ const client = axios.create({
 
 // Add token to requests if available
 client.interceptors.request.use((config) => {
-  // Ensure baseURL is always set - use production URL directly as string literal if empty
+  // Ensure baseURL is always set - use string literal directly
+  const productionUrl = 'https://vaad-m-h.onrender.com'
   if (!config.baseURL || typeof config.baseURL !== 'string' || config.baseURL.trim() === '') {
-    config.baseURL = 'https://vaad-m-h.onrender.com'
-    console.warn('⚠️  baseURL was empty in interceptor! Using production URL: https://vaad-m-h.onrender.com')
+    config.baseURL = productionUrl
+    console.warn('⚠️  baseURL was empty in interceptor! Using:', productionUrl)
   }
   
   const token = localStorage.getItem('token')
