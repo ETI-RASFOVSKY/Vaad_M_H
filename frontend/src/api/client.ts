@@ -4,8 +4,9 @@ import axios from 'axios'
 // Note: baseURL should NOT include /api - it's added in the request paths
 const getApiUrl = () => {
   // 1. Explicit env (Vercel / local) - should be full URL without /api
-  if (import.meta.env.VITE_API_URL) {
-    const url = import.meta.env.VITE_API_URL
+  const viteApiUrl = import.meta.env.VITE_API_URL
+  if (viteApiUrl && viteApiUrl.trim() !== '') {
+    const url = viteApiUrl.trim()
     // Remove trailing /api if present
     return url.replace(/\/api\/?$/, '')
   }
