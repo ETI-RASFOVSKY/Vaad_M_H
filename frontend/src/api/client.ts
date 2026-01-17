@@ -1,20 +1,14 @@
 import axios from 'axios'
 
-// Backend URL configuration
-const PRODUCTION_URL = 'https://vaad-m-h.onrender.com'
-const LOCAL_URL = 'http://localhost:5000'
-
-// Get API URL based on environment
+// Get API URL based on environment - use string literals directly to avoid minification issues
 function getApiUrl(): string {
   // 1. Explicit env (Vercel / local) - should be full URL without /api
   const viteApiUrl = import.meta.env.VITE_API_URL
-  console.log('[getApiUrl] Step 1 - VITE_API_URL:', viteApiUrl)
   
   if (viteApiUrl && typeof viteApiUrl === 'string' && viteApiUrl.trim() !== '') {
     const url = viteApiUrl.trim()
     const cleanUrl = url.replace(/\/api\/?$/, '')
     if (cleanUrl && cleanUrl.length > 0) {
-      console.log('[getApiUrl] Using VITE_API_URL:', cleanUrl)
       return cleanUrl
     }
   }
@@ -22,58 +16,45 @@ function getApiUrl(): string {
   // 2. Runtime check: Check hostname (only works in browser)
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const hostname = window.location.hostname
-    console.log('[getApiUrl] Step 2 - Hostname:', hostname)
     
     // If hostname includes vercel.app, netlify.app, or render.com, it's production
     if (hostname.includes('vercel.app') || 
         hostname.includes('netlify.app') || 
         hostname.includes('render.com')) {
-      console.log('[getApiUrl] Detected production hostname, using:', PRODUCTION_URL)
-      return PRODUCTION_URL
+      // Use string literal directly - DO NOT use constant
+      return 'https://vaad-m-h.onrender.com'
     }
     // If hostname is localhost, use local URL
     if (hostname.includes('localhost') || hostname === '127.0.0.1') {
-      console.log('[getApiUrl] Detected localhost, using:', LOCAL_URL)
-      return LOCAL_URL
+      return 'http://localhost:5000'
     }
     // Otherwise, assume production
-    console.log('[getApiUrl] Unknown hostname, defaulting to production:', PRODUCTION_URL)
-    return PRODUCTION_URL
+    return 'https://vaad-m-h.onrender.com'
   }
 
   // 3. Build-time check: Use env variables
-  const isProd = import.meta.env.PROD === true || import.meta.env.MODE === 'production'
-  console.log('[getApiUrl] Step 3 - isProd:', isProd, 'PROD:', import.meta.env.PROD, 'MODE:', import.meta.env.MODE)
-  
-  if (isProd) {
-    console.log('[getApiUrl] Build-time production detected, using:', PRODUCTION_URL)
-    return PRODUCTION_URL
+  if (import.meta.env.PROD === true || import.meta.env.MODE === 'production') {
+    return 'https://vaad-m-h.onrender.com'
   }
 
   // 4. Default to local development
-  console.log('[getApiUrl] Step 4 - Defaulting to local:', LOCAL_URL)
-  return LOCAL_URL
+  return 'http://localhost:5000'
 }
 
 // Get the API URL
 let apiUrl = getApiUrl()
-console.log('[client.ts] Initial apiUrl from getApiUrl():', apiUrl)
 
-// Ensure apiUrl is never empty - use production URL as fallback
+// Ensure apiUrl is never empty - use production URL as fallback (string literal directly)
 if (!apiUrl || typeof apiUrl !== 'string' || apiUrl.trim() === '') {
-  console.error('❌ API_URL is empty or invalid! Using production fallback...')
-  apiUrl = PRODUCTION_URL
-  console.log('[client.ts] Fallback applied, apiUrl is now:', apiUrl)
+  apiUrl = 'https://vaad-m-h.onrender.com'
 } else {
   apiUrl = apiUrl.trim()
-  console.log('[client.ts] apiUrl trimmed:', apiUrl)
 }
 
-// Final fallback - ensure apiUrl is never empty
-const baseURL = apiUrl || PRODUCTION_URL
-console.log('[client.ts] Final baseURL:', baseURL)
+// Final fallback - ensure apiUrl is never empty (string literal directly)
+const baseURL = apiUrl || 'https://vaad-m-h.onrender.com'
 
-// Debug logging with string literals
+// Debug logging - use string literal directly in logs
 if (typeof window !== 'undefined') {
   console.log('🔗 API Configuration:')
   console.log('  - API_URL:', baseURL)
@@ -81,13 +62,13 @@ if (typeof window !== 'undefined') {
   console.log('  - PROD mode:', import.meta.env.PROD)
   console.log('  - MODE:', import.meta.env.MODE)
   console.log('  - Window hostname:', window.location.hostname)
-  console.log('  - Production URL constant:', PRODUCTION_URL)
+  console.log('  - Production URL:', 'https://vaad-m-h.onrender.com')
   console.log('✅ Using API URL:', baseURL)
 }
 
 // Create axios client - use string literal directly as final fallback
 const client = axios.create({
-  baseURL: baseURL || PRODUCTION_URL,
+  baseURL: baseURL || 'https://vaad-m-h.onrender.com',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -98,8 +79,8 @@ const client = axios.create({
 client.interceptors.request.use((config) => {
   // Ensure baseURL is always set - use string literal directly
   if (!config.baseURL || typeof config.baseURL !== 'string' || config.baseURL.trim() === '') {
-    config.baseURL = PRODUCTION_URL
-    console.warn('⚠️  baseURL was empty in interceptor! Using production URL:', PRODUCTION_URL)
+    config.baseURL = 'https://vaad-m-h.onrender.com'
+    console.warn('⚠️  baseURL was empty in interceptor! Using production URL: https://vaad-m-h.onrender.com')
   }
   
   const token = localStorage.getItem('token')
