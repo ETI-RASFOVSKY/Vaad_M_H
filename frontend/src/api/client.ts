@@ -5,22 +5,52 @@ import axios from 'axios'
 const getApiUrl = () => {
   // 1. Explicit env (Vercel / local) - should be full URL without /api
   const viteApiUrl = import.meta.env.VITE_API_URL
-  if (viteApiUrl && viteApiUrl.trim() !== '') {
+  if (viteApiUrl && typeof viteApiUrl === 'string' && viteApiUrl.trim() !== '') {
     const url = viteApiUrl.trim()
     // Remove trailing /api if present
-    return url.replace(/\/api\/?$/, '')
+    const cleanUrl = url.replace(/\/api\/?$/, '')
+    if (cleanUrl) {
+      return cleanUrl
+    }
   }
 
   // 2. Production fallback - Render backend
-  if (import.meta.env.PROD) {
-    return 'https://vaad-m-h.onrender.com'
+  // Check if we're in production by multiple methods
+  // In Vercel, PROD might not be set correctly, so check hostname first
+  let isProduction = false
+  
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const hostname = window.location.hostname
+    // If hostname includes vercel.app, netlify.app, or render.com, it's production
+    isProduction = hostname.includes('vercel.app') || 
+                   hostname.includes('netlify.app') || 
+                   hostname.includes('render.com') ||
+                   (!hostname.includes('localhost') && hostname !== '127.0.0.1')
+  }
+  
+  // Also check env variables
+  if (!isProduction) {
+    isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production'
+  }
+  
+  if (isProduction) {
+    const prodUrl = 'https://vaad-m-h.onrender.com'
+    return prodUrl
   }
 
   // 3. Local development
   return 'http://localhost:5000'
 }
 
-const API_URL = getApiUrl()
+let API_URL = getApiUrl()
+
+// Ensure API_URL is never empty - use fallback if empty
+if (!API_URL || typeof API_URL !== 'string' || API_URL.trim() === '') {
+  console.error('❌ API_URL is empty or invalid! Using fallback...')
+  // Fallback to Render backend URL
+  API_URL = 'https://vaad-m-h.onrender.com'
+  console.warn(`⚠️  Using fallback URL: ${API_URL}`)
+}
 
 // Debug logging
 if (typeof window !== 'undefined') {
@@ -32,8 +62,11 @@ if (typeof window !== 'undefined') {
   console.log('✅ Using API URL:', API_URL)
 }
 
+// Default fallback URL - always use Render backend as fallback
+const FALLBACK_API_URL = 'https://vaad-m-h.onrender.com'
+
 const client = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL || FALLBACK_API_URL, // Use fallback if API_URL is empty
   headers: {
     'Content-Type': 'application/json',
   },
@@ -42,10 +75,14 @@ const client = axios.create({
 
 // Add token to requests if available
 client.interceptors.request.use((config) => {
-  // Ensure baseURL is always set
-  if (!config.baseURL || config.baseURL.trim() === '') {
-    config.baseURL = API_URL
+  // Ensure baseURL is always set - use fallback if empty
+  let baseURL = config.baseURL || API_URL || FALLBACK_API_URL
+  if (!baseURL || typeof baseURL !== 'string' || baseURL.trim() === '') {
+    // Fallback to Render backend URL
+    baseURL = FALLBACK_API_URL
+    console.warn('⚠️  baseURL was empty in interceptor! Using fallback:', baseURL)
   }
+  config.baseURL = baseURL
   
   const token = localStorage.getItem('token')
   if (token) {
