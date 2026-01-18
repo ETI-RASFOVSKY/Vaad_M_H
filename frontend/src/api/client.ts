@@ -4,6 +4,8 @@ const API_URL = import.meta.env.VITE_API_URL
 
 console.log('API_URL (raw):', API_URL)
 console.log('API_URL length:', API_URL?.length)
+console.log('🔥 DEPLOY CHECK 2026-01-18 18:40')
+
 
 const client = axios.create({
   baseURL: API_URL,
