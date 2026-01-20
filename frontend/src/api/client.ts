@@ -1,42 +1,51 @@
 import axios from 'axios'
 
-// Get API URL and trim whitespace
+// Get API URL and process it
 const rawApiUrl = import.meta.env.VITE_API_URL
 
-// Debug: Check all variations with detailed info
-console.log('🔍 RAW:', rawApiUrl)
-console.log('🔍 RAW type:', typeof rawApiUrl)
-console.log('🔍 RAW length:', rawApiUrl?.length)
-console.log('🔍 RAW charCodes:', rawApiUrl ? Array.from(rawApiUrl).map(c => c.charCodeAt(0)).join(',') : 'null')
-console.log('🔍 JSON:', JSON.stringify(rawApiUrl))
-console.log('🔍 TRIM:', rawApiUrl?.trim())
-console.log('🔍 TRIM length:', rawApiUrl?.trim()?.length)
+// Fallback URL (default)
+const FALLBACK_URL = 'https://vaad-m-h.onrender.com'
 
-// Aggressive trimming - remove all whitespace including non-breaking spaces
-let API_URL = rawApiUrl?.trim() || ''
-// Remove all types of whitespace
-API_URL = API_URL.replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, '')
-
-console.log('🔍 API_URL (after aggressive trim):', API_URL)
-console.log('🔍 API_URL length:', API_URL?.length)
-
-// Validate API URL
-if (!API_URL || API_URL.length < 10 || !API_URL.startsWith('http')) {
-  console.error('❌ ERROR: VITE_API_URL is not set correctly!')
-  console.error('❌ Raw value:', JSON.stringify(rawApiUrl))
-  console.error('❌ After trim:', JSON.stringify(API_URL))
-  console.error('❌ Value length:', rawApiUrl?.length)
-  console.error('❌ Please check Vercel Environment Variables')
-  console.error('❌ Make sure VITE_API_URL = https://vaad-m-h.onrender.com (no spaces, no quotes)')
-  console.error('❌ If using multiple environments, check ALL of them (Production, Preview, Development)')
-  
-  // Use fallback
-  API_URL = 'https://vaad-m-h.onrender.com'
-  console.warn('⚠️ Using fallback URL:', API_URL)
+// Debug: Check raw value
+if (rawApiUrl) {
+  console.log('🔍 RAW VITE_API_URL:', rawApiUrl)
+  console.log('🔍 RAW length:', rawApiUrl.length)
+  console.log('🔍 RAW charCodes:', Array.from(rawApiUrl).map(c => c.charCodeAt(0)).join(','))
 }
 
+// Process and validate API URL
+let API_URL = ''
+
+if (rawApiUrl && typeof rawApiUrl === 'string') {
+  // Trim and clean
+  let cleaned = rawApiUrl.trim()
+  // Remove all types of whitespace
+  cleaned = cleaned.replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, '')
+  
+  // Validate: must be a valid URL
+  if (cleaned && cleaned.length > 10 && cleaned.startsWith('http')) {
+    API_URL = cleaned
+    console.log('✅ Using VITE_API_URL from environment:', API_URL)
+  } else {
+    console.warn('⚠️ VITE_API_URL is not valid, using fallback')
+    console.warn('⚠️ Raw value was:', JSON.stringify(rawApiUrl))
+    API_URL = FALLBACK_URL
+  }
+} else {
+  console.warn('⚠️ VITE_API_URL is not set, using fallback')
+  API_URL = FALLBACK_URL
+}
+
+// Final validation - always use fallback if something went wrong
+if (!API_URL || !API_URL.startsWith('http')) {
+  console.error('❌ CRITICAL: API_URL is invalid, forcing fallback')
+  API_URL = FALLBACK_URL
+}
+
+console.log('🔍 Final API_URL:', API_URL)
+
 const client = axios.create({
-  baseURL: API_URL || 'https://vaad-m-h.onrender.com', // Fallback if not set
+  baseURL: API_URL, // Already validated above
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
