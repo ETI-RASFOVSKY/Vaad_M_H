@@ -2,21 +2,37 @@ import axios from 'axios'
 
 // Get API URL and trim whitespace
 const rawApiUrl = import.meta.env.VITE_API_URL
-const API_URL = rawApiUrl?.trim() || ''
 
-// Debug: Check all variations
+// Debug: Check all variations with detailed info
 console.log('🔍 RAW:', rawApiUrl)
-console.log('🔍 TRIM:', API_URL)
+console.log('🔍 RAW type:', typeof rawApiUrl)
+console.log('🔍 RAW length:', rawApiUrl?.length)
+console.log('🔍 RAW charCodes:', rawApiUrl ? Array.from(rawApiUrl).map(c => c.charCodeAt(0)).join(',') : 'null')
 console.log('🔍 JSON:', JSON.stringify(rawApiUrl))
-console.log('🔍 API_URL (final):', API_URL)
+console.log('🔍 TRIM:', rawApiUrl?.trim())
+console.log('🔍 TRIM length:', rawApiUrl?.trim()?.length)
+
+// Aggressive trimming - remove all whitespace including non-breaking spaces
+let API_URL = rawApiUrl?.trim() || ''
+// Remove all types of whitespace
+API_URL = API_URL.replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, '')
+
+console.log('🔍 API_URL (after aggressive trim):', API_URL)
 console.log('🔍 API_URL length:', API_URL?.length)
 
 // Validate API URL
-if (!API_URL || API_URL.length < 10) {
+if (!API_URL || API_URL.length < 10 || !API_URL.startsWith('http')) {
   console.error('❌ ERROR: VITE_API_URL is not set correctly!')
-  console.error('❌ Current value:', JSON.stringify(rawApiUrl))
-  console.error('❌ Please set VITE_API_URL in Vercel Environment Variables')
-  console.error('❌ Expected format: https://vaad-backend.onrender.com (no trailing slash)')
+  console.error('❌ Raw value:', JSON.stringify(rawApiUrl))
+  console.error('❌ After trim:', JSON.stringify(API_URL))
+  console.error('❌ Value length:', rawApiUrl?.length)
+  console.error('❌ Please check Vercel Environment Variables')
+  console.error('❌ Make sure VITE_API_URL = https://vaad-m-h.onrender.com (no spaces, no quotes)')
+  console.error('❌ If using multiple environments, check ALL of them (Production, Preview, Development)')
+  
+  // Use fallback
+  API_URL = 'https://vaad-m-h.onrender.com'
+  console.warn('⚠️ Using fallback URL:', API_URL)
 }
 
 const client = axios.create({
