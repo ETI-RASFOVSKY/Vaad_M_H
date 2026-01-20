@@ -1,12 +1,31 @@
 import axios from 'axios'
 
 /**
- * פעולה קיצונית: עקיפת משתני הסביבה (Environment Variables)
- * הגדרת כתובת ה-API באופן קשיח כדי למנוע בעיות של רווחים או Cache ב-Vercel.
+ * שימוש במשתנה סביבה חדש כדי לעקוף בעיות Cache ב-Vercel
+ * חשוב: המשתנה ב-Vercel חייב להתחיל ב-VITE_
  */
-const API_URL = 'https://vaad-m-h.onrender.com'
+const ENV_URL = import.meta.env.VITE_VERCEL_API_URL;
+const FALLBACK_URL = 'https://vaad-m-h.onrender.com';
 
-console.log('🛡️ HARDCODED API URL IN USE:', API_URL)
+// ניקוי רווחים ובדיקת תקינות
+const getBaseUrl = () => {
+  if (ENV_URL && typeof ENV_URL === 'string') {
+    const cleaned = ENV_URL.trim().replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, '');
+    if (cleaned.length > 10 && cleaned.startsWith('http')) {
+      return cleaned;
+    }
+  }
+  return FALLBACK_URL;
+};
+
+const API_URL = getBaseUrl();
+
+console.log('🛡️ API URL IN USE:', API_URL);
+if (import.meta.env.VITE_VERCEL_API_URL) {
+    console.log('🔗 Source: Vercel Environment Variable');
+} else {
+    console.log('🏠 Source: Hardcoded Fallback');
+}
 
 export const client = axios.create({
   baseURL: API_URL,
