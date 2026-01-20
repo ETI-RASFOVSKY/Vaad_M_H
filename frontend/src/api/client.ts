@@ -1,44 +1,14 @@
 import axios from 'axios'
 
-// Get API URL and process it
-const rawApiUrl = import.meta.env.VITE_API_URL
+/**
+ * פעולה קיצונית: עקיפת משתני הסביבה (Environment Variables)
+ * הגדרת כתובת ה-API באופן קשיח כדי למנוע בעיות של רווחים או Cache ב-Vercel.
+ */
+const API_URL = 'https://vaad-m-h.onrender.com'
 
-// Fallback URL (default)
-const FALLBACK_URL = 'https://vaad-m-h.onrender.com'
+console.log('🛡️ HARDCODED API URL IN USE:', API_URL)
 
-// Process and validate API URL
-let API_URL = ''
-
-// Debug: Check raw value initially
-if (rawApiUrl) {
-  console.log('🔍 RAW VITE_API_URL detected, length:', rawApiUrl.length)
-}
-
-if (rawApiUrl && typeof rawApiUrl === 'string') {
-  // Trim and clean: remove ALL types of whitespace
-  let cleaned = rawApiUrl.trim().replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, '')
-  
-  // Validate: must be a valid URL (more than 10 chars and starts with http)
-  if (cleaned && cleaned.length > 10 && cleaned.startsWith('http')) {
-    API_URL = cleaned
-    console.log('✅ Using VITE_API_URL from environment:', API_URL)
-  } else {
-    console.warn('⚠️ VITE_API_URL contains only spaces or is invalid, using fallback')
-    API_URL = FALLBACK_URL
-  }
-} else {
-  console.warn('⚠️ VITE_API_URL is not set, using fallback')
-  API_URL = FALLBACK_URL
-}
-
-// Final safety check
-if (!API_URL || API_URL.trim().length === 0 || !API_URL.startsWith('http')) {
-  API_URL = FALLBACK_URL
-}
-
-console.log('🚀 Final API_URL being used:', API_URL)
-
-const client = axios.create({
+export const client = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   headers: {
@@ -46,17 +16,19 @@ const client = axios.create({
   },
 })
 
-// Add token to requests if available
+// הוספת Token לכל בקשה ולוג מעקב ב-Console
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   
-  // Log every request to track connection
-  console.log(`📡 Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`)
+  // לוג זה יוכיח לך ב-Console שהבקשה אכן יוצאת לכתובת הנכונה
+  console.log(`📡 SENDING REQUEST TO: ${config.baseURL}${config.url || ''}`)
   
   return config
+}, (error) => {
+  return Promise.reject(error)
 })
 
 export default client
