@@ -50,6 +50,8 @@ const corsOptions = {
       'https://vaad-m-h.vercel.app',
       'https://vaad-m-h-frontend-realy.vercel.app',
       'https://vaad-m-h-frontend-realy-*.vercel.app', // Vercel preview URLs
+      // Allow any Render.com static site (wildcard pattern)
+      'https://*.onrender.com',
       'http://localhost:3000',
       'http://localhost:5173',
     ].filter(Boolean); // Remove undefined values
@@ -65,10 +67,13 @@ const corsOptions = {
       return allowed === origin
     })
     
-    // Also check if origin is a Vercel preview URL (vaad-m-h-frontend-realy-*.vercel.app)
-    const isVercelPreview = /^https:\/\/vaad-m-h-frontend-realy-.*\.vercel\.app$/.test(origin)
+    // Check if origin is any Vercel URL (production, preview, or custom domain)
+    const isVercelSite = /^https:\/\/.*\.vercel\.app$/.test(origin)
     
-    if (isAllowed || isVercelPreview) {
+    // Also check if origin is a Render.com static site
+    const isRenderStaticSite = /^https:\/\/.*\.onrender\.com$/.test(origin)
+    
+    if (isAllowed || isVercelSite || isRenderStaticSite) {
       callback(null, true);
     } else {
       console.warn(`⚠️  CORS blocked origin: ${origin}`);
