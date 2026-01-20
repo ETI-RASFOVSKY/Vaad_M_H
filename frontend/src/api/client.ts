@@ -1,17 +1,26 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL
+// Get API URL and trim whitespace
+const rawApiUrl = import.meta.env.VITE_API_URL
+const API_URL = rawApiUrl?.trim() || ''
 
 // Debug: Check all variations
-console.log('🔍 RAW:', import.meta.env.VITE_API_URL)
-console.log('🔍 TRIM:', import.meta.env.VITE_API_URL?.trim())
-console.log('🔍 JSON:', JSON.stringify(import.meta.env.VITE_API_URL))
-console.log('🔍 API_URL (raw):', API_URL)
+console.log('🔍 RAW:', rawApiUrl)
+console.log('🔍 TRIM:', API_URL)
+console.log('🔍 JSON:', JSON.stringify(rawApiUrl))
+console.log('🔍 API_URL (final):', API_URL)
 console.log('🔍 API_URL length:', API_URL?.length)
-console.log('🔥 DEPLOY CHECK 2026-01-18 18:40')
+
+// Validate API URL
+if (!API_URL || API_URL.length < 10) {
+  console.error('❌ ERROR: VITE_API_URL is not set correctly!')
+  console.error('❌ Current value:', JSON.stringify(rawApiUrl))
+  console.error('❌ Please set VITE_API_URL in Vercel Environment Variables')
+  console.error('❌ Expected format: https://vaad-backend.onrender.com (no trailing slash)')
+}
 
 const client = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL || 'https://vaad-m-h.onrender.com', // Fallback if not set
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
