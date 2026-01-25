@@ -33,51 +33,98 @@ app.use((req, res, next) => {
 
 // Middleware
 // CORS configuration - allow specific origins in production, all in development
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     // Allow requests with no origin (like mobile apps or curl requests)
+//     if (!origin) return callback(null, true);
+    
+//     // In development, allow all origins
+//     if (process.env.NODE_ENV === 'development') {
+//       return callback(null, true);
+//     }
+    
+//     // In production, check against allowed origins
+//     const allowedOrigins = [
+//       process.env.FRONTEND_URL,
+//       'https://vaad-m-h.onrender.com',
+//       'https://vaad-m-h.vercel.app',
+//       'https://vaad-m-h-frontend-realy.vercel.app',
+//       'https://vaad-m-h-frontend-realy-*.vercel.app', // Vercel preview URLs
+//       // Allow any Render.com static site (wildcard pattern)
+//       'https://*.onrender.com',
+//       'http://localhost:3000',
+//       'http://localhost:5173',
+//     ].filter(Boolean); // Remove undefined values
+    
+//     // Check if origin matches any allowed origin (including wildcard patterns)
+//     const isAllowed = allowedOrigins.some(allowed => {
+//       if (allowed.includes('*')) {
+//         // Handle wildcard patterns (for Vercel preview URLs)
+//         const pattern =allowed.replace(/\./g, '\\.').replace(/\*/g, '.*')
+//         const regex = new RegExp(`^${pattern}$`)
+//         return regex.test(origin)
+//       }
+//       return allowed === origin
+//     })
+    
+//     // Check if origin is any Vercel URL (production, preview, or custom domain)
+//     const isVercelSite = /^https:\/\/.*\.vercel\.app$/.test(origin)
+    
+//     // Also check if origin is a Render.com static site
+//     const isRenderStaticSite = /^https:\/\/.*\.onrender\.com$/.test(origin)
+    
+//     if (isAllowed || isVercelSite || isRenderStaticSite) {
+//       callback(null, true);
+//     } else {
+//       console.warn(`⚠️  CORS blocked origin: ${origin}`);
+//       console.warn(`📋 Allowed origins:`, allowedOrigins);
+//       callback(new Error('Not allowed by CORS'));
+//     }
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+//   exposedHeaders: ['Content-Type', 'Authorization'],
+// };
+
+// app.use(cors(corsOptions));
+
+// CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (curl, mobile apps, etc.)
     if (!origin) return callback(null, true);
-    
-    // In development, allow all origins
-    if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
-    }
-    
-    // In production, check against allowed origins
+
+    // Allow all origins in development
+    if (process.env.NODE_ENV === 'development') return callback(null, true);
+
+    // List of allowed origins
     const allowedOrigins = [
       process.env.FRONTEND_URL,
+      'http://localhost:3000',
+      'http://localhost:5173',
       'https://vaad-m-h.onrender.com',
       'https://vaad-m-h.vercel.app',
       'https://vaad-m-h-frontend-realy.vercel.app',
       'https://vaad-m-h-frontend-realy-*.vercel.app', // Vercel preview URLs
-      // Allow any Render.com static site (wildcard pattern)
-      'https://*.onrender.com',
-      'http://localhost:3000',
-      'http://localhost:5173',
-    ].filter(Boolean); // Remove undefined values
-    
-    // Check if origin matches any allowed origin (including wildcard patterns)
+      'https://*.onrender.com', // Render.com static sites
+    ].filter(Boolean);
+
+    // Check if origin matches allowed origins including wildcards
     const isAllowed = allowedOrigins.some(allowed => {
       if (allowed.includes('*')) {
-        // Handle wildcard patterns (for Vercel preview URLs)
-        const pattern = allowed.replace(/\*/g, '.*')
-        const regex = new RegExp(`^${pattern}$`)
-        return regex.test(origin)
+        // Escape dots and convert * to .*
+        const pattern = allowed.replace(/\./g, '\\.').replace(/\*/g, '.*');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(origin);
       }
-      return allowed === origin
-    })
-    
-    // Check if origin is any Vercel URL (production, preview, or custom domain)
-    const isVercelSite = /^https:\/\/.*\.vercel\.app$/.test(origin)
-    
-    // Also check if origin is a Render.com static site
-    const isRenderStaticSite = /^https:\/\/.*\.onrender\.com$/.test(origin)
-    
-    if (isAllowed || isVercelSite || isRenderStaticSite) {
+      return allowed === origin;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`⚠️  CORS blocked origin: ${origin}`);
-      console.warn(`📋 Allowed origins:`, allowedOrigins);
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -87,7 +134,12 @@ const corsOptions = {
   exposedHeaders: ['Content-Type', 'Authorization'],
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Handle preflight OPTIONS requests globally
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
