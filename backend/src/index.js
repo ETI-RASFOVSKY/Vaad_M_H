@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import mediaRoutes from './routes/media.js';
 import messageRoutes from './routes/messages.js';
+import emailRoutes from './routes/email.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -162,6 +163,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/email', emailRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
