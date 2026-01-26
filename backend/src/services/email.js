@@ -76,6 +76,13 @@ export const sendContactConfirmationToUser = async (userEmail, userName) => {
 // Send reply email to user
 export const sendReplyToUser = async (userEmail, userName, subject, content) => {
   try {
+    console.log('📧 sendReplyToUser called:', {
+      userEmail,
+      userName,
+      subject,
+      hasContent: !!content,
+    });
+
     const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #d4af37;">תגובה מהודעה שלך</h2>
@@ -90,15 +97,30 @@ export const sendReplyToUser = async (userEmail, userName, subject, content) => 
       </div>
     `;
 
+    console.log('📤 Calling sendEmail...');
     const result = await sendEmail({
       to: userEmail,
       subject: subject || 'תגובה מהודעה שלך - ועד מבקשי ה\'',
       html,
     });
 
-    return result?.success || false;
+    console.log('📧 sendEmail result:', result);
+
+    if (!result) {
+      console.error('❌ sendEmail returned null/undefined');
+      return false;
+    }
+
+    if (result.success === false) {
+      console.error('❌ sendEmail failed:', result.error);
+      return false;
+    }
+
+    console.log('✅ Email sent successfully');
+    return true;
   } catch (error) {
-    console.error('Error sending reply email to user:', error);
+    console.error('❌ Error sending reply email to user:', error);
+    console.error('Error stack:', error.stack);
     return false;
   }
 };

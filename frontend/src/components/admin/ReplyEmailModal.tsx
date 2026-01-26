@@ -30,10 +30,28 @@ export default function ReplyEmailModal({
     setError('')
 
     try {
-      const response = await client.post(`/api/email/reply/${messageId}`, {
-        subject,
-        html: content.replace(/\n/g, '<br>'),
-      })
+      console.log('📧 Sending reply email for message:', messageId)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('לא מחובר. אנא התחבר שוב.')
+        setIsSending(false)
+        return
+      }
+
+      const response = await client.post(
+        `/api/email/reply/${messageId}`,
+        {
+          subject,
+          html: content.replace(/\n/g, '<br>'),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      console.log('✅ Email sent successfully:', response.data)
 
       if (response.data.success) {
         onSuccess()
@@ -44,7 +62,17 @@ export default function ReplyEmailModal({
         setError(response.data.error || 'שגיאה בשליחת האימייל')
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'שגיאה בשליחת האימייל')
+      console.error('❌ Error sending email:', err)
+      console.error('Response:', err.response?.data)
+      console.error('Status:', err.response?.status)
+      
+      if (err.response?.status === 401) {
+        setError('לא מחובר. אנא התחבר שוב.')
+      } else if (err.response?.status === 404) {
+        setError('הנתיב לא נמצא. בדוק את הגדרות השרת.')
+      } else {
+        setError(err.response?.data?.error || 'שגיאה בשליחת האימייל. בדוק את הגדרות האימייל.')
+      }
     } finally {
       setIsSending(false)
     }

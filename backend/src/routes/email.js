@@ -59,30 +59,47 @@ router.post(
   ],
   async (req, res, next) => {
     try {
+      console.log('📧 Reply email request received:', {
+        messageId: req.params.messageId,
+        subject: req.body.subject,
+        hasHtml: !!req.body.html,
+      });
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.error('❌ Validation errors:', errors.array());
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
       const { messageId } = req.params;
-      const { subject, html, text } = req.body;
+      const { subject, html } = req.body;
 
       // Get message
+      console.log('🔍 Fetching message:', messageId);
       const message = await prisma.message.findUnique({
         where: { id: messageId },
       });
 
       if (!message) {
+        console.error('❌ Message not found:', messageId);
         return res.status(404).json({ success: false, error: 'Message not found' });
       }
 
+      console.log('✅ Message found:', {
+        email: message.email,
+        name: message.name,
+      });
+
       // Send email
+      console.log('📤 Sending email to:', message.email);
       const result = await sendReplyToUser(
         message.email,
         message.name,
         subject,
         html
       );
+
+      console.log('📧 Email send result:', result);
 
       if (result) {
         // Mark message as handled
@@ -91,17 +108,21 @@ router.post(
           data: { handled: true },
         });
 
+        console.log('✅ Email sent successfully and message marked as handled');
         res.json({
           success: true,
           message: 'תגובה נשלחה בהצלחה',
         });
       } else {
+        console.error('❌ Email send failed - result is false');
         res.status(500).json({
           success: false,
           error: 'שגיאה בשליחת אימייל. בדוק את הגדרות האימייל.',
         });
       }
     } catch (error) {
+      console.error('❌ Error in reply email route:', error);
+      console.error('Error stack:', error.stack);
       next(error);
     }
   }
