@@ -45,8 +45,11 @@
    - לחץ "Add"
    - **Name:** `VITE_API_URL`
    - **Value:** `https://vaad-backend-i96q.onrender.com` (החלף בכתובת הבקאנד שלך)
+   - **⚠️ חשוב:** ללא סלאש בסוף! ❌ לא: `https://...onrender.com/` ✅ כן: `https://...onrender.com`
    - **Environment:** בחר "Production", "Preview", "Development"
    - לחץ "Save"
+   
+   **⚠️ אחרי הוספת המשתנה, צריך לעשות Redeploy!**
 
 5. **לחץ "Deploy"**
 6. **חכה 1-2 דקות** - Vercel מהיר יותר מ-Render!
@@ -105,6 +108,18 @@ https://vaad-frontend-xxxx.vercel.app
 - ודא שה-`VITE_API_URL` מוגדר נכון ב-Vercel
 - ודא שהבקאנד רץ ב-Render
 - ודא שה-URL של הבקאנד נכון (ללא סלאש בסוף)
+- **חייב לעשות Redeploy אחרי הוספת/שינוי המשתנה!**
+
+### "CORS error" או "Access-Control-Allow-Origin"
+- ✅ הקוד כבר תומך אוטומטית בכל אתרי Vercel (`*.vercel.app`)
+- לא צריך לעשות כלום - זה אמור לעבוד מיד
+- אם עדיין יש בעיה, ראה `VERCEL_CORS_AND_ENV_GUIDE.md`
+
+### "VITE_API_URL is undefined"
+- ודא שהמשתנה מוגדר ב-Vercel Settings → Environment Variables
+- בדוק שהשם נכון: `VITE_API_URL` (לא `API_URL`)
+- עשה Redeploy אחרי הוספת המשתנה
+- ראה `VERCEL_CORS_AND_ENV_GUIDE.md` להסבר מפורט
 
 ### "גלריה מראה שגיאות"
 - ודא שיש קובץ `_redirects` בתיקיית `frontend/public/`

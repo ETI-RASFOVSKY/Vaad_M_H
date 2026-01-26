@@ -121,6 +121,7 @@ git push -u origin main
    CLOUDINARY_API_SECRET=your-api-secret
    PORT=10000
    NODE_ENV=production
+   FRONTEND_URL=https://vaad-frontend.onrender.com
    ```
    
    **⚠️ חשוב:**
@@ -128,6 +129,7 @@ git push -u origin main
    - `JWT_SECRET` - כתוב מפתח אקראי (למשל: `vaad-secret-key-2024`)
    - `CLOUDINARY_*` - אם יש לך (אם לא, השאר ריק)
    - `PORT` - Render משתמש ב-`10000` ב-free plan
+   - `FRONTEND_URL` - כתובת ה-Frontend שלך (תוסיף אחרי שתפרוס את ה-Frontend) ⚠️ **חשוב ל-CORS!**
 
 7. **לחץ "Create Web Service"**
 8. **חכה 5-10 דקות** שהשירות יעלה
@@ -263,6 +265,12 @@ https://vaad-frontend.onrender.com
 - חכה כמה דקות עד שהבנייה תסתיים
 - זה צריך בגלל ש-Vite בונה משתני סביבה בזמן build, לא בזמן runtime
 - ודא שה-`VITE_API_URL` נכון: `https://vaad-backend-i96q.onrender.com` (ללא סלאש בסוף!)
+
+### "CORS error" או "Access-Control-Allow-Origin"
+- ודא שהוספת `FRONTEND_URL` ב-Backend Environment Variables
+- הכתובת צריכה להיות: `https://vaad-frontend.onrender.com` (השם האמיתי של ה-Frontend שלך)
+- אחרי הוספת המשתנה, ה-Backend יתחיל מחדש אוטומטית
+- ראה גם: `FIX_CORS_AND_ENV_VARIABLES.md` להסבר מפורט
 
 ### "גלריה מראה Not Found"
 - ודא שיש קובץ `_redirects` בתיקיית `frontend/public/`

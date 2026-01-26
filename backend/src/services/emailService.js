@@ -9,6 +9,9 @@ const createTransporter = () => {
 
   if (emailService === 'resend') {
     // Resend.com configuration
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not configured');
+    }
     return nodemailer.createTransport({
       host: 'smtp.resend.com',
       port: 465,
@@ -22,6 +25,9 @@ const createTransporter = () => {
 
   if (emailService === 'sendgrid') {
     // SendGrid configuration
+    if (!process.env.SENDGRID_API_KEY) {
+      throw new Error('SENDGRID_API_KEY is not configured');
+    }
     return nodemailer.createTransport({
       service: 'SendGrid',
       auth: {
@@ -32,6 +38,9 @@ const createTransporter = () => {
   }
 
   // Generic SMTP configuration
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    throw new Error('SMTP configuration is incomplete');
+  }
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
