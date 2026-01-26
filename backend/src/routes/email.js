@@ -2,12 +2,12 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
-import { sendEmail } from '../services/emailService.js';
+import { sendReplyToUser } from '../services/email.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Send email (admin only)
+// Send email (admin only) - using sendReplyToUser for consistency
 router.post(
   '/send',
   authenticateToken,
@@ -23,25 +23,24 @@ router.post(
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const { to, subject, html, text } = req.body;
+      const { to, subject, html, name } = req.body;
 
-      const result = await sendEmail({
+      const result = await sendReplyToUser(
         to,
+        name || 'לקוח',
         subject,
-        html,
-        text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
-      });
+        html
+      );
 
-      if (result.success) {
+      if (result) {
         res.json({
           success: true,
           message: 'אימייל נשלח בהצלחה',
-          data: result,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: result.error || 'שגיאה בשליחת אימייל',
+          error: 'שגיאה בשליחת אימייל. בדוק את הגדרות האימייל.',
         });
       }
     } catch (error) {
@@ -78,14 +77,14 @@ router.post(
       }
 
       // Send email
-      const result = await sendEmail({
-        to: message.email,
+      const result = await sendReplyToUser(
+        message.email,
+        message.name,
         subject,
-        html,
-        text: text || html.replace(/<[^>]*>/g, ''),
-      });
+        html
+      );
 
-      if (result.success) {
+      if (result) {
         // Mark message as handled
         await prisma.message.update({
           where: { id: messageId },
@@ -95,12 +94,11 @@ router.post(
         res.json({
           success: true,
           message: 'תגובה נשלחה בהצלחה',
-          data: result,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: result.error || 'שגיאה בשליחת אימייל',
+          error: 'שגיאה בשליחת אימייל. בדוק את הגדרות האימייל.',
         });
       }
     } catch (error) {

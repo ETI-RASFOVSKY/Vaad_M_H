@@ -1,404 +1,172 @@
-import nodemailer from 'nodemailer';
-import { Resend } from 'resend';
+import { sendEmail } from './emailService.js';
 
-// Helper to add delay between email sends (Resend rate limit: 2 requests/second)
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Check if email is enabled
-const isEmailEnabled = () => {
-  return !!(process.env.RESEND_API_KEY || (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD));
+// Get admin email from environment or use default
+const getAdminEmail = () => {
+  return process.env.ADMIN_EMAIL || process.env.EMAIL_FROM || 'admin@vaad.org';
 };
 
-// Create Resend client if API key is available
-const getResendClient = () => {
-  if (process.env.RESEND_API_KEY) {
-    return new Resend(process.env.RESEND_API_KEY);
-  }
-  return null;
-};
-
-// Create transporter - using Gmail as default (if no Resend)
-const createTransporter = () => {
-  if (process.env.RESEND_API_KEY) {
-    return null; // Use Resend instead
-  }
-  
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER || 'e0548451274@gmail.com',
-      pass: process.env.EMAIL_PASSWORD, // App password from Gmail
-    },
-  });
-};
-
-// Send email to admin when contact form is submitted
-export const sendContactEmailToAdmin = async (messageData) => {
-  if (!isEmailEnabled()) {
-    console.log('Email not configured - skipping email to admin');
-    return false;
-  }
-
+// Send contact email to admin
+export const sendContactEmailToAdmin = async ({ name, email, content }) => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'e0548451274@gmail.com';
-    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'e0548451274@gmail.com';
+    const adminEmail = getAdminEmail();
     
-    const htmlContent = `
+    const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">הודעה חדשה מאתר</h2>
-        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
-          <p><strong>שם:</strong> ${messageData.name}</p>
-          <p><strong>אימייל:</strong> ${messageData.email}</p>
+        <h2 style="color: #d4af37;">הודעה חדשה מאתר ועד מבקשי ה'</h2>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>שם:</strong> ${name}</p>
+          <p><strong>אימייל:</strong> ${email}</p>
           <p><strong>תוכן ההודעה:</strong></p>
-          <p style="white-space: pre-wrap;">${messageData.content}</p>
+          <div style="background-color: white; padding: 15px; border-radius: 4px; margin-top: 10px;">
+            ${content.replace(/\n/g, '<br>')}
+          </div>
         </div>
-        <p style="color: #666; font-size: 12px;">תאריך: ${new Date().toLocaleString('he-IL')}</p>
+        <p style="color: #666; font-size: 14px;">
+          ניתן להגיב דרך מערכת הניהול באתר.
+        </p>
       </div>
     `;
 
-    // Use Resend if available
-    const resend = getResendClient();
-    if (resend) {
-      // Resend only allows sending to account email without domain verification
-      // Always send to Resend account email and include admin email in the message
-      const resendAccountEmail = process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
-      
-      // Update HTML to include the admin email (so you know it's for the admin)
-      const htmlWithAdminInfo = htmlContent.replace(
-        '<h2 style="color: #333;">הודעה חדשה מאתר</h2>',
-        `<h2 style="color: #333;">הודעה חדשה מאתר</h2>
-        <p style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0;">
-          <strong>מיועד למנהל:</strong> ${adminEmail}
-        </p>`
-      );
-      
-      try {
-        console.log(`📧 Sending contact email to Resend account: ${resendAccountEmail}`);
-        console.log(`📧 Intended for admin: ${adminEmail}`);
-        
-        const result = await resend.emails.send({
-          from: fromEmail,
-          to: resendAccountEmail,
-          subject: `הודעה חדשה מאתר - ${messageData.name} (למנהל: ${adminEmail})`,
-          html: htmlWithAdminInfo,
-        });
-        
-        if (result.error) {
-          console.error('❌ Resend returned error:', result.error);
-          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
-            console.warn('⚠️  Rate limit reached. Email will be sent when rate limit resets.');
-            return false;
-          }
-          throw new Error(result.error.message || 'Resend API error');
-        }
-        
-        console.log(`✅ Contact email sent to Resend account email: ${resendAccountEmail}`);
-        console.log(`📧 Email ID: ${result.data?.id || result.id}`);
-        console.log(`📧 Intended for admin: ${adminEmail}`);
-        return true;
-      } catch (error) {
-        console.error('Error sending email to admin:', error);
-        if (error.message?.includes('rate limit') || error.message?.includes('Too many requests')) {
-          console.warn('⚠️  Rate limit reached. Email will be sent when rate limit resets.');
-        }
-        return false;
-      }
-    }
+    const result = await sendEmail({
+      to: adminEmail,
+      subject: `הודעה חדשה מאתר - ${name}`,
+      html,
+    });
 
-    // Fallback to nodemailer
-    const transporter = createTransporter();
-    if (transporter) {
-      await transporter.sendMail({
-        from: fromEmail,
-        to: adminEmail,
-        subject: `הודעה חדשה מאתר - ${messageData.name}`,
-        html: htmlContent,
-      });
-      return true;
-    }
-
-    return false;
+    return result?.success || false;
   } catch (error) {
-    console.error('Error sending email to admin:', error);
+    console.error('Error sending contact email to admin:', error);
     return false;
   }
 };
 
-// Send confirmation email to user when contact form is submitted
+// Send confirmation email to user
 export const sendContactConfirmationToUser = async (userEmail, userName) => {
-  if (!isEmailEnabled()) {
-    console.log('Email not configured - skipping confirmation email');
-    return false;
-  }
-
   try {
-    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'e0548451274@gmail.com';
-    
-    const htmlContent = `
+    const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">שלום ${userName},</h2>
-        <p>תודה על פנייתך. קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.</p>
-        <p>ברכות,<br>צוות ועד מבקשי ה\'</p>
+        <h2 style="color: #d4af37;">תודה על פנייתך!</h2>
+        <p>שלום ${userName},</p>
+        <p>קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0; color: #666;">
+            <strong>ועד מבקשי ה'</strong><br>
+            נשמח לעמוד לרשותך בכל שאלה או בקשה.
+          </p>
+        </div>
+        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+          זהו אימייל אוטומטי, אנא אל תשיב למייל זה.
+        </p>
       </div>
     `;
 
-    // Use Resend if available
-    const resend = getResendClient();
-    if (resend) {
-      const accountEmail = process.env.ADMIN_EMAIL || process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
-      
-      try {
-        // Add delay to avoid rate limit (Resend: 2 requests/second)
-        await delay(600);
-        
-        const result = await resend.emails.send({
-          from: fromEmail,
-          to: userEmail,
-          subject: 'תודה על פנייתך - ועד מבקשי ה\'',
-          html: htmlContent,
-        });
-        
-        // If error about verified domain, send to account email (but log that it's for the user)
-        if (result.error && (result.error.message?.includes('own email address') || result.error.message?.includes('verified domain'))) {
-          console.log(`⚠️  Cannot send confirmation to ${userEmail}. Email would be sent to account email ${accountEmail} if needed.`);
-          // For confirmation emails, we'll just skip if we can't send to the user
-          return false;
-        }
-        
-        if (result.error) {
-          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
-            console.warn('⚠️  Rate limit reached for user confirmation email. Skipping.');
-            return false;
-          }
-          throw new Error(result.error.message || 'Resend API error');
-        }
-        
-        return true;
-      } catch (error) {
-        if (error.message?.includes('rate limit') || error.message?.includes('Too many requests')) {
-          console.warn('⚠️  Rate limit reached for user confirmation email. Skipping.');
-          return false;
-        }
-        console.error('Error sending confirmation email to user:', error);
-        return false;
-      }
-    }
+    const result = await sendEmail({
+      to: userEmail,
+      subject: 'תודה על פנייתך - ועד מבקשי ה\'',
+      html,
+    });
 
-    // Fallback to nodemailer
-    const transporter = createTransporter();
-    if (transporter) {
-      await transporter.sendMail({
-        from: fromEmail,
-        to: userEmail,
-        subject: 'תודה על פנייתך - ועד מבקשי ה\'',
-        html: htmlContent,
-      });
-      return true;
-    }
-
-    return false;
+    return result?.success || false;
   } catch (error) {
     console.error('Error sending confirmation email to user:', error);
     return false;
   }
 };
 
-// Send verification code email
-export const sendVerificationEmail = async (email, code) => {
-  if (!isEmailEnabled()) {
-    console.log('Email not configured - verification code:', code);
-    console.log('⚠️  WARNING: Email verification is not configured. Code is:', code);
-    return false;
-  }
-
+// Send reply email to user
+export const sendReplyToUser = async (userEmail, userName, subject, content) => {
   try {
-    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'e0548451274@gmail.com';
-    
-    const htmlContent = `
+    const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">קוד אימות</h2>
-        <p>שלום,</p>
-        <p>קוד האימות שלך הוא:</p>
-        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #333; font-size: 32px; letter-spacing: 5px;">${code}</h1>
+        <h2 style="color: #d4af37;">תגובה מהודעה שלך</h2>
+        <p>שלום ${userName},</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          ${content}
         </div>
-        <p>קוד זה תקף ל-10 דקות.</p>
-        <p>אם לא ביקשת קוד זה, אנא התעלם מהודעה זו.</p>
+        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+          בברכה,<br>
+          <strong>ועד מבקשי ה'</strong>
+        </p>
       </div>
     `;
 
-    // Use Resend if available
-    const resend = getResendClient();
-    if (resend) {
-      // Resend only allows sending to account email without domain verification
-      // Always send to Resend account email and include original email in message
-      const resendAccountEmail = process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
-      
-      try {
-        // Update HTML to include the original email address
-        const htmlWithInfo = htmlContent.replace(
-          '<h2 style="color: #333;">קוד אימות</h2>',
-          `<h2 style="color: #333;">קוד אימות</h2>
-          <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
-            <strong>מייל מקורי:</strong> ${email}
-          </p>`
-        );
-        
-        console.log(`📧 Sending verification code to: ${resendAccountEmail}`);
-        console.log(`📧 Original email: ${email}`);
-        
-        const result = await resend.emails.send({
-          from: fromEmail,
-          to: resendAccountEmail,
-          subject: `קוד אימות - ${email}`,
-          html: htmlWithInfo,
-        });
-        
-        if (result.error) {
-          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
-            console.warn('⚠️  Rate limit reached for verification email. Skipping.');
-            return false;
-          }
-          throw new Error(result.error.message || 'Resend API error');
-        }
-        
-        console.log(`✅ Verification code sent to: ${resendAccountEmail}`);
-        console.log(`📧 Email ID: ${result.data?.id || result.id}`);
-        return true;
-      } catch (error) {
-        if (error.message?.includes('rate limit') || error.message?.includes('Too many requests')) {
-          console.warn('⚠️  Rate limit reached for verification email. Skipping.');
-          return false;
-        }
-        console.error('Error sending verification email:', error);
-        return false;
-      }
-    }
+    const result = await sendEmail({
+      to: userEmail,
+      subject: subject || 'תגובה מהודעה שלך - ועד מבקשי ה\'',
+      html,
+    });
 
-    // Fallback to nodemailer
-    const transporter = createTransporter();
-    if (transporter) {
-      await transporter.sendMail({
-        from: fromEmail,
-        to: email,
-        subject: 'קוד אימות - ועד מבקשי ה\'',
-        html: htmlContent,
-      });
-      return true;
-    }
-
+    return result?.success || false;
+  } catch (error) {
+    console.error('Error sending reply email to user:', error);
     return false;
+  }
+};
+
+// Send verification email
+export const sendVerificationEmail = async (userEmail, verificationCode) => {
+  try {
+    const html = `
+      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #d4af37;">אימות אימייל - ועד מבקשי ה'</h2>
+        <p>שלום,</p>
+        <p>תודה שנרשמת למערכת הניהול של ועד מבקשי ה'.</p>
+        <p>קוד האימות שלך הוא:</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+          <h1 style="color: #d4af37; font-size: 32px; margin: 0; letter-spacing: 5px;">${verificationCode}</h1>
+        </div>
+        <p style="color: #666; font-size: 14px;">
+          הקוד תקף ל-10 דקות בלבד.
+        </p>
+        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+          אם לא ביקשת קוד זה, אנא התעלם מהאימייל.
+        </p>
+      </div>
+    `;
+
+    const result = await sendEmail({
+      to: userEmail,
+      subject: 'קוד אימות - ועד מבקשי ה\'',
+      html,
+    });
+
+    return result?.success || false;
   } catch (error) {
     console.error('Error sending verification email:', error);
     return false;
   }
 };
 
-// Send password reset code email
-export const sendPasswordResetEmail = async (email, code) => {
-  if (!isEmailEnabled()) {
-    console.log('⚠️  Email not configured - reset code:', code);
-    console.log('⚠️  WARNING: Email reset is not configured. Code is:', code);
-    console.log('⚠️  Please check your RESEND_API_KEY or EMAIL_USER/EMAIL_PASSWORD in .env');
-    return false;
-  }
-
+// Send password reset email
+export const sendPasswordResetEmail = async (userEmail, resetCode) => {
   try {
-    // For Resend, we need to use the account email or verified domain
-    // Try account email first, then fallback to configured EMAIL_FROM
-    const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'e0548451274@gmail.com';
-    
-    const htmlContent = `
+    const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">איפוס סיסמה</h2>
+        <h2 style="color: #d4af37;">איפוס סיסמה - ועד מבקשי ה'</h2>
         <p>שלום,</p>
-        <p>ביקשת לאפס את הסיסמה שלך. קוד האימות שלך הוא:</p>
-        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #333; font-size: 32px; letter-spacing: 5px;">${code}</h1>
+        <p>קיבלנו בקשה לאיפוס הסיסמה שלך.</p>
+        <p>קוד האיפוס שלך הוא:</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+          <h1 style="color: #d4af37; font-size: 32px; margin: 0; letter-spacing: 5px;">${resetCode}</h1>
         </div>
-        <p>קוד זה תקף ל-10 דקות.</p>
-        <p>אם לא ביקשת לאפס את הסיסמה, אנא התעלם מהודעה זו.</p>
+        <p style="color: #666; font-size: 14px;">
+          הקוד תקף ל-10 דקות בלבד.
+        </p>
+        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+          אם לא ביקשת איפוס סיסמה, אנא התעלם מהאימייל והסיסמה שלך תישאר ללא שינוי.
+        </p>
       </div>
     `;
 
-    // Use Resend if available
-    const resend = getResendClient();
-    if (resend) {
-      // Resend only allows sending to account email (r0533160762@gmail.com) without domain verification
-      // Always send to Resend account email and include the original email in the message
-      const resendAccountEmail = process.env.RESEND_ACCOUNT_EMAIL || 'r0533160762@gmail.com';
-      const targetEmail = email;
-      
-      console.log(`📧 Sending password reset email for ${targetEmail} via Resend...`);
-      console.log(`📧 Sending to Resend account: ${resendAccountEmail}`);
-      console.log(`📧 From: ${resendFromEmail}`);
-      
-      try {
-        // Update HTML to include the original email address
-        const htmlWithInfo = htmlContent.replace(
-          '<h2 style="color: #333;">איפוס סיסמה</h2>',
-          `<h2 style="color: #333;">איפוס סיסמה</h2>
-          <p style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
-            <strong>מייל מקורי שביקש איפוס:</strong> ${targetEmail}
-          </p>`
-        );
-        
-        // Send directly to Resend account email (or ADMIN_EMAIL if it's the account email)
-        const result = await resend.emails.send({
-          from: resendFromEmail,
-          to: resendAccountEmail,
-          subject: `איפוס סיסמה - ${targetEmail}`,
-          html: htmlWithInfo,
-        });
-        
-        // Check if there's an error in the response
-        if (result.error) {
-          console.error('❌ Resend returned error:', result.error);
-          if (result.error.message?.includes('rate limit') || result.error.message?.includes('Too many requests')) {
-            console.warn('⚠️  Rate limit reached for password reset email. Code will be shown in console.');
-            return false;
-          }
-          return false;
-        }
-        
-        console.log('✅ Password reset email sent to:', resendAccountEmail);
-        console.log('📧 Email ID:', result.data?.id || result.id);
-        console.log(`📧 Original request was for: ${targetEmail}`);
-        return true;
-      } catch (resendError) {
-        if (resendError.message?.includes('rate limit') || resendError.message?.includes('Too many requests')) {
-          console.warn('⚠️  Rate limit reached for password reset email. Code will be shown in console.');
-          return false;
-        }
-        console.error('❌ Resend error:', resendError.message || resendError);
-        return false;
-      }
-    }
-
-    // Fallback to nodemailer
-    const transporter = createTransporter();
-    if (transporter) {
-      console.log(`📧 Sending password reset email to ${email} via Nodemailer...`);
-      const result = await transporter.sendMail({
-        from: fromEmail,
-        to: email,
-        subject: 'איפוס סיסמה - ועד מבקשי ה\'',
-        html: htmlContent,
-      });
-      console.log('✅ Password reset email sent successfully via Nodemailer:', result.messageId);
-      return true;
-    }
-
-    console.error('❌ No email service available');
-    return false;
-  } catch (error) {
-    console.error('❌ Error sending password reset email:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      response: error.response?.data,
+    const result = await sendEmail({
+      to: userEmail,
+      subject: 'איפוס סיסמה - ועד מבקשי ה\'',
+      html,
     });
+
+    return result?.success || false;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
     return false;
   }
 };

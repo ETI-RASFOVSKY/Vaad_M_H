@@ -54,7 +54,35 @@ const createTransporter = () => {
 
 export const sendEmail = async ({ to, subject, html, text }) => {
   try {
-    const transporter = createTransporter();
+    // Check if email service is configured
+    const emailService = process.env.EMAIL_SERVICE || 'resend';
+    
+    if (emailService === 'resend' && !process.env.RESEND_API_KEY) {
+      console.warn('⚠️  Email service not configured: RESEND_API_KEY is missing');
+      return {
+        success: false,
+        error: 'Email service is not configured. Please set RESEND_API_KEY in environment variables.',
+      };
+    }
+    
+    if (emailService === 'sendgrid' && !process.env.SENDGRID_API_KEY) {
+      console.warn('⚠️  Email service not configured: SENDGRID_API_KEY is missing');
+      return {
+        success: false,
+        error: 'Email service is not configured. Please set SENDGRID_API_KEY in environment variables.',
+      };
+    }
+
+    let transporter;
+    try {
+      transporter = createTransporter();
+    } catch (error) {
+      console.warn('⚠️  Failed to create email transporter:', error.message);
+      return {
+        success: false,
+        error: `Email service configuration error: ${error.message}`,
+      };
+    }
 
     const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@vaad.org';
     const fromName = process.env.EMAIL_FROM_NAME || 'ועד מבקשי ה\'';

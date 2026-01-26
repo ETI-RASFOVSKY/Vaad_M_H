@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import client from '../../api/client'
+import ReplyEmailModal from '../../components/admin/ReplyEmailModal'
 
 interface Message {
   id: string
@@ -15,6 +16,17 @@ export default function MessagesManager() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
+  const [replyModal, setReplyModal] = useState<{
+    isOpen: boolean
+    messageId: string
+    email: string
+    name: string
+  }>({
+    isOpen: false,
+    messageId: '',
+    email: '',
+    name: '',
+  })
 
   useEffect(() => {
     fetchMessages()
@@ -126,14 +138,29 @@ export default function MessagesManager() {
               </div>
             </div>
             <p className="text-gray-700 mb-4 whitespace-pre-wrap">{message.content}</p>
-            {!message.handled && (
+            <div className="flex gap-2">
               <button
-                onClick={() => handleMarkAsHandled(message.id)}
+                onClick={() =>
+                  setReplyModal({
+                    isOpen: true,
+                    messageId: message.id,
+                    email: message.email,
+                    name: message.name,
+                  })
+                }
                 className="btn-primary text-sm"
               >
-                סמן כטופל
+                שלח תגובה
               </button>
-            )}
+              {!message.handled && (
+                <button
+                  onClick={() => handleMarkAsHandled(message.id)}
+                  className="btn-secondary text-sm"
+                >
+                  סמן כטופל
+                </button>
+              )}
+            </div>
           </motion.div>
         ))}
       </div>
@@ -143,6 +170,19 @@ export default function MessagesManager() {
           אין הודעות להצגה
         </div>
       )}
+
+      <ReplyEmailModal
+        isOpen={replyModal.isOpen}
+        onClose={() =>
+          setReplyModal({ isOpen: false, messageId: '', email: '', name: '' })
+        }
+        messageId={replyModal.messageId}
+        recipientEmail={replyModal.email}
+        recipientName={replyModal.name}
+        onSuccess={() => {
+          fetchMessages()
+        }}
+      />
     </div>
   )
 }
