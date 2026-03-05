@@ -25,6 +25,7 @@ export default function Gallery() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMedia()
@@ -36,12 +37,28 @@ export default function Gallery() {
 
   const fetchMedia = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const response = await client.get('/api/media')
-      if (response.data.success) {
-        setMedia(response.data.data)
+      console.log('Gallery response:', response.data)
+      
+      if (response.data && response.data.success) {
+        const mediaData = response.data.data || []
+        setMedia(mediaData)
+        console.log('Media loaded:', mediaData.length, 'items')
+      } else {
+        console.warn('Unexpected response format:', response.data)
+        setMedia([])
+        setError('תגובה לא צפויה מהשרת')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching media:', error)
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'שגיאה בטעינת הגלריה. אנא נסו לרענן את הדף.'
+      setError(errorMessage)
+      setMedia([])
     } finally {
       setLoading(false)
     }
@@ -92,6 +109,27 @@ export default function Gallery() {
         </motion.div>
       </section>
 
+      {/* Error Message */}
+      {error && (
+        <section className="section-container">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg max-w-2xl mx-auto mb-6"
+          >
+            <div className="flex items-center justify-between">
+              <p>{error}</p>
+              <button
+                onClick={fetchMedia}
+                className="ml-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              >
+                נסה שוב
+              </button>
+            </div>
+          </motion.div>
+        </section>
+      )}
+
       {/* Filters */}
       <section className="section-container">
         <div className="flex flex-wrap justify-center gap-4 mb-8">
@@ -111,11 +149,11 @@ export default function Gallery() {
         </div>
 
         {/* Media Grid */}
-        {filteredMedia.length === 0 ? (
+        {filteredMedia.length === 0 && !error ? (
           <div className="text-center py-12">
             <p className="text-xl text-gray-500">אין תוכן להצגה</p>
           </div>
-        ) : (
+        ) : filteredMedia.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredMedia.map((item, index) => (
               <motion.div
@@ -159,7 +197,7 @@ export default function Gallery() {
               </motion.div>
             ))}
           </div>
-        )}
+        ) : null}
       </section>
 
       {/* Lightbox */}

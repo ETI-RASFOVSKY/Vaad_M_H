@@ -16,6 +16,7 @@ type ContactFormData = z.infer<typeof contactSchema>
 export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const {
     register,
@@ -29,18 +30,48 @@ export default function Contact() {
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true)
     setSubmitStatus('idle')
+    setErrorMessage(null)
 
     try {
+      console.log('Submitting contact form:', data)
       const response = await client.post('/api/messages', data)
-      if (response.data.success) {
+      console.log('Contact form response:', response.data)
+      
+      if (response.data && response.data.success) {
         setSubmitStatus('success')
+        setErrorMessage(null)
         reset()
-        setTimeout(() => setSubmitStatus('idle'), 5000)
+        setTimeout(() => {
+          setSubmitStatus('idle')
+          setErrorMessage(null)
+        }, 5000)
+      } else {
+        // Response received but success is false
+        const errorMsg = response.data?.error || response.data?.message || 'הפנייה לא נשלחה. אנא נסו שוב.'
+        setErrorMessage(errorMsg)
+        setSubmitStatus('error')
+        setTimeout(() => {
+          setSubmitStatus('idle')
+          setErrorMessage(null)
+        }, 5000)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting form:', error)
+      // Show more detailed error message
+      const errorMsg = error.response?.data?.error || 
+                      error.response?.data?.message || 
+                      (error.response?.data?.errors && Array.isArray(error.response.data.errors) 
+                        ? error.response.data.errors.map((e: any) => e.msg || e.message).join(', ')
+                        : null) ||
+                      error.message || 
+                      'אירעה שגיאה בשליחת ההודעה. אנא נסו שוב.'
+      console.error('Error details:', errorMsg)
+      setErrorMessage(errorMsg)
       setSubmitStatus('error')
-      setTimeout(() => setSubmitStatus('idle'), 5000)
+      setTimeout(() => {
+        setSubmitStatus('idle')
+        setErrorMessage(null)
+      }, 5000)
     } finally {
       setIsSubmitting(false)
     }
@@ -163,7 +194,7 @@ export default function Contact() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
               >
-                אירעה שגיאה בשליחת ההודעה. אנא נסו שוב.
+                {errorMessage || 'אירעה שגיאה בשליחת ההודעה. אנא נסו שוב.'}
               </motion.div>
             )}
           </form>
